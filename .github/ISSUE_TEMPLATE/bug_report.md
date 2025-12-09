@@ -23,7 +23,7 @@ package main
 
 import (
     "github.com/zoobzio/herald"
-    "github.com/zoobzio/herald/kafka"
+    "github.com/zoobzio/herald/pkg/kafka"
 )
 
 func main() {
