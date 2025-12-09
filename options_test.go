@@ -327,7 +327,7 @@ func TestPublisher_WithErrorHandler(t *testing.T) {
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
 	// Error handler that counts errors
-	errorHandler := pipz.Effect("count-errors", func(_ context.Context, err *pipz.Error[TestEvent]) error {
+	errorHandler := pipz.Effect("count-errors", func(_ context.Context, _ *pipz.Error[TestEvent]) error {
 		handledErrors.Add(1)
 		return nil
 	})
