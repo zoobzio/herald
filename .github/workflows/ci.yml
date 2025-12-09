@@ -84,16 +84,16 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-provider-${{ matrix.provider }}-${{ hashFiles(format('{0}/go.sum', matrix.provider)) }}
+        key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-provider-${{ matrix.provider }}-${{ hashFiles(format('pkg/{0}/go.sum', matrix.provider)) }}
         restore-keys: |
           ${{ runner.os }}-go-${{ env.GO_VERSION }}-provider-${{ matrix.provider }}-
 
     - name: Download dependencies
-      working-directory: ${{ matrix.provider }}
+      working-directory: pkg/${{ matrix.provider }}
       run: go mod download
 
     - name: Run ${{ matrix.provider }} tests with testcontainers
-      working-directory: ${{ matrix.provider }}
+      working-directory: pkg/${{ matrix.provider }}
       run: go test -v -race -timeout=10m ./...
 
   lint:
