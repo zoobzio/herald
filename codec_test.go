@@ -265,7 +265,7 @@ func TestSubscriber_DefaultCodecIsJSON(t *testing.T) {
 	})
 
 	sub := NewSubscriber(provider, signal, key, nil, WithSubscriberCapitan[TestEvent](c))
-	sub.Start()
+	sub.Start(context.Background())
 
 	// Send JSON-encoded message
 	event := TestEvent{OrderID: "SUB-DEFAULT", Total: 100.00}
@@ -317,7 +317,7 @@ func TestSubscriber_CustomCodec(t *testing.T) {
 		WithSubscriberCapitan[TestEvent](c),
 		WithSubscriberCodec[TestEvent](codec),
 	)
-	sub.Start()
+	sub.Start(context.Background())
 
 	event := TestEvent{OrderID: "SUB-CUSTOM", Total: 200.00}
 	data, err := json.Marshal(event)
@@ -401,7 +401,7 @@ func TestCodec_RoundTrip(t *testing.T) {
 		WithSubscriberCapitan[TestEvent](c2),
 		WithSubscriberCodec[TestEvent](codec),
 	)
-	sub.Start()
+	sub.Start(context.Background())
 
 	// Send the published data to subscriber
 	subCh <- NewSuccess(newTestMessage(published[0]))
@@ -463,7 +463,7 @@ func TestSubscriber_CodecMismatchEmitsError(t *testing.T) {
 		WithSubscriberCapitan[TestEvent](c),
 		WithSubscriberCodec[TestEvent](failCodec),
 	)
-	sub.Start()
+	sub.Start(context.Background())
 
 	// Send valid JSON that the codec will reject
 	data, err := json.Marshal(TestEvent{OrderID: "MISMATCH", Total: 1.0})
@@ -554,7 +554,7 @@ func TestSubscriber_NilCodecDefaultsToJSON(t *testing.T) {
 		WithSubscriberCapitan[TestEvent](c),
 		WithSubscriberCodec[TestEvent](nil),
 	)
-	sub.Start()
+	sub.Start(context.Background())
 
 	// Send JSON-encoded message
 	event := TestEvent{OrderID: "NIL-SUB", Total: 77.00}

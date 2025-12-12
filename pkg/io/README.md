@@ -83,7 +83,7 @@ func main() {
     provider := heraldio.New(heraldio.WithReader(os.Stdin))
 
     sub := herald.NewSubscriber(provider, lineReceived, lineKey, nil)
-    sub.Start()
+    sub.Start(ctx)
 
     capitan.Hook(lineReceived, func(ctx context.Context, e *capitan.Event) {
         line, _ := lineKey.From(e)

@@ -74,7 +74,7 @@ defer provider.Close()
 
 // Subscribe to SQS and emit to capitan
 sub := herald.NewSubscriber(provider, orderCreated, orderKey, nil)
-sub.Start()
+sub.Start(ctx)
 
 // Hook listener to handle events from SQS
 capitan.Hook(orderCreated, func(ctx context.Context, e *capitan.Event) {

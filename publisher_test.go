@@ -3,8 +3,11 @@ package herald
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/zoobzio/capitan"
 )
@@ -172,23 +175,140 @@ func TestPublisher_Close(t *testing.T) {
 }
 
 func TestPublisher_DefaultCapitan(t *testing.T) {
-	provider := &mockProvider{}
-	capitan.Configure()
-	defer capitan.Shutdown()
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	provider := &mockProvider{
+		publishFunc: func(_ context.Context, _ []byte, _ Metadata) error {
+			wg.Done()
+			return nil
+		},
+	}
 
 	signal := capitan.NewSignal("test.default", "Test default")
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
+	// Publisher WITHOUT WithPublisherCapitan - uses global
 	pub := NewPublisher(provider, signal, key, nil)
 	pub.Start()
 
 	capitan.Emit(context.Background(), signal, key.Field(TestEvent{OrderID: "default"}))
 
-	capitan.Shutdown()
+	// Wait for publish
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for publish")
+	}
+
 	pub.Close()
 
 	published := provider.Published()
 	if len(published) != 1 {
 		t.Fatalf("expected 1 published message, got %d", len(published))
+	}
+}
+
+func TestPublisher_DefaultCapitan_EmitError(t *testing.T) {
+	// Provider that always fails
+	provider := &mockProvider{
+		publishFunc: func(_ context.Context, _ []byte, _ Metadata) error {
+			return errors.New("publish failed")
+		},
+	}
+
+	c := capitan.New(capitan.WithSyncMode())
+	defer c.Shutdown()
+
+	signal := capitan.NewSignal("test.default.error", "Test default error")
+	key := capitan.NewKey[TestEvent]("payload", "test.event")
+
+	var errorReceived atomic.Bool
+	c.Hook(ErrorSignal, func(_ context.Context, _ *capitan.Event) {
+		errorReceived.Store(true)
+	})
+
+	// Use custom capitan to test error path with isolated instance
+	pub := NewPublisher(provider, signal, key, nil, WithPublisherCapitan[TestEvent](c))
+	pub.Start()
+
+	c.Emit(context.Background(), signal, key.Field(TestEvent{OrderID: "will-fail"}))
+
+	// Give time for async processing
+	time.Sleep(50 * time.Millisecond)
+
+	c.Shutdown()
+	pub.Close()
+
+	if !errorReceived.Load() {
+		t.Error("expected error to be emitted via capitan")
+	}
+}
+
+func TestPublisher_CloseBeforeStart(t *testing.T) {
+	provider := &mockProvider{}
+
+	signal := capitan.NewSignal("test.close.before", "Test close before start")
+	key := capitan.NewKey[TestEvent]("payload", "test.event")
+
+	// Create publisher but don't start - observer will be nil
+	pub := NewPublisher(provider, signal, key, nil)
+
+	// Close should not panic with nil observer
+	err := pub.Close()
+	if err != nil {
+		t.Errorf("expected no error closing unstarted publisher, got %v", err)
+	}
+}
+
+func TestPublisher_CloseWithNilPipeline(t *testing.T) {
+	// Directly create a Publisher with nil pipeline to test defensive code path
+	pub := &Publisher[TestEvent]{}
+
+	// Close should handle nil pipeline gracefully
+	err := pub.Close()
+	if err != nil {
+		t.Errorf("expected no error closing publisher with nil pipeline, got %v", err)
+	}
+}
+
+func TestPublisher_EmitErrorWithoutCustomCapitan(t *testing.T) {
+	// Provider that always fails
+	provider := &mockProvider{
+		publishFunc: func(_ context.Context, _ []byte, _ Metadata) error {
+			return errors.New("publish failed")
+		},
+	}
+
+	signal := capitan.NewSignal("test.emit.error.global", "Test emit error global")
+	key := capitan.NewKey[TestEvent]("payload", "test.event")
+
+	// Hook into global capitan to catch error
+	var errorReceived atomic.Bool
+	listener := capitan.Hook(ErrorSignal, func(_ context.Context, _ *capitan.Event) {
+		errorReceived.Store(true)
+	})
+	defer listener.Close()
+
+	// Publisher WITHOUT WithPublisherCapitan - uses global
+	pub := NewPublisher(provider, signal, key, nil)
+	pub.Start()
+
+	// Emit via global capitan
+	capitan.Emit(context.Background(), signal, key.Field(TestEvent{OrderID: "global-error"}))
+
+	// Give time for async processing
+	time.Sleep(100 * time.Millisecond)
+
+	pub.Close()
+
+	if !errorReceived.Load() {
+		t.Error("expected error to be emitted via global capitan")
 	}
 }

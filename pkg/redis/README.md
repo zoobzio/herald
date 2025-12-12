@@ -61,8 +61,11 @@ func main() {
 ### Subscribing with Consumer Groups
 
 ```go
-// Create consumer group first (run once)
-client.XGroupCreateMkStream(ctx, "orders", "order-processors", "0")
+// Create consumer group (idempotent - safe to call on every startup)
+err := client.XGroupCreateMkStream(ctx, "orders", "order-processors", "0").Err()
+if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
+    log.Fatal(err)
+}
 
 // Create provider with consumer group
 provider := heraldredis.New("orders",
@@ -74,7 +77,7 @@ defer provider.Close()
 
 // Subscribe to Redis Stream and emit to capitan
 sub := herald.NewSubscriber(provider, orderCreated, orderKey, nil)
-sub.Start()
+sub.Start(ctx)
 
 // Hook listener to handle events from Redis
 capitan.Hook(orderCreated, func(ctx context.Context, e *capitan.Event) {
@@ -82,6 +85,8 @@ capitan.Hook(orderCreated, func(ctx context.Context, e *capitan.Event) {
     fmt.Printf("Received order: %s\n", order.ID)
 })
 ```
+
+**Note:** `XGroupCreateMkStream` creates both the stream and consumer group if they don't exist. The `BUSYGROUP` error indicates the group already exists—this is expected on subsequent startups and can be safely ignored.
 
 ## Options
 

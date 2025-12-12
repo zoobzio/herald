@@ -40,7 +40,13 @@ func WithSubscriberCodec[T any](c Codec) SubscriberOption[T] {
 }
 
 // NewSubscriber creates a Subscriber that consumes from the broker and emits T to the given signal.
-// Pipeline options wrap the emit operation with reliability features.
+//
+// Parameters:
+//   - provider: broker implementation (kafka, nats, sqs, etc.)
+//   - signal: capitan signal to emit events to
+//   - key: typed key for creating fields from T
+//   - pipelineOpts: reliability middleware (retry, timeout, circuit breaker); nil for none
+//   - opts: subscriber configuration (custom codec, custom capitan instance)
 func NewSubscriber[T any](provider Provider, signal capitan.Signal, key capitan.GenericKey[T], pipelineOpts []Option[T], opts ...SubscriberOption[T]) *Subscriber[T] {
 	s := &Subscriber[T]{
 		provider: provider,
@@ -81,8 +87,9 @@ func newSubscribeTerminal[T any](signal capitan.Signal, key capitan.GenericKey[T
 }
 
 // Start begins consuming from the broker and emitting to Capitan.
-func (s *Subscriber[T]) Start() {
-	ctx, cancel := context.WithCancel(context.Background())
+// The provided context controls the subscriber's lifetime; canceling it stops consumption.
+func (s *Subscriber[T]) Start(ctx context.Context) {
+	ctx, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
 
 	messages := s.provider.Subscribe(ctx)

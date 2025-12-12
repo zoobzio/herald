@@ -151,7 +151,7 @@ func TestSubscriber_WithTimeout(t *testing.T) {
 	}
 
 	sub := NewSubscriber(provider, signal, key, opts, WithSubscriberCapitan[TestEvent](c))
-	sub.Start()
+	sub.Start(context.Background())
 
 	event := TestEvent{OrderID: "sub-timeout", Total: 1.0}
 	data, err := json.Marshal(event)
@@ -207,7 +207,7 @@ func TestSubscriber_WithRateLimit(t *testing.T) {
 	}
 
 	sub := NewSubscriber(provider, signal, key, opts, WithSubscriberCapitan[TestEvent](c))
-	sub.Start()
+	sub.Start(context.Background())
 
 	// Send 3 events
 	for i := 0; i < 3; i++ {

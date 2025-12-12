@@ -87,7 +87,7 @@ defer provider.Close()
 
 // Subscribe to JetStream and emit to capitan
 sub := herald.NewSubscriber(provider, orderCreated, orderKey, nil)
-sub.Start()
+sub.Start(ctx)
 
 // Hook listener to handle events from JetStream
 capitan.Hook(orderCreated, func(ctx context.Context, e *capitan.Event) {

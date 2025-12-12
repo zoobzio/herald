@@ -89,7 +89,7 @@ func TestSubscriber_DefaultCapitanEmit(t *testing.T) {
 
 	// Create subscriber WITHOUT WithSubscriberCapitan - uses default global capitan
 	sub := herald.NewSubscriber(provider, signal, key, nil)
-	sub.Start()
+	sub.Start(context.Background())
 
 	event := TestEvent{OrderID: "default-emit", Total: 42.0}
 	data, err := json.Marshal(event)

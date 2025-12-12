@@ -2,6 +2,7 @@ package testing
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -92,6 +93,24 @@ func TestMockProvider_Close(t *testing.T) {
 
 	if !provider.IsClosed() {
 		t.Error("expected closed after Close()")
+	}
+}
+
+func TestMockProvider_Ping(t *testing.T) {
+	provider := NewMockProvider()
+
+	// Should succeed when open
+	err := provider.Ping(context.Background())
+	if err != nil {
+		t.Errorf("expected no error on open provider, got %v", err)
+	}
+
+	// Close and try again
+	_ = provider.Close()
+
+	err = provider.Ping(context.Background())
+	if !errors.Is(err, herald.ErrNoWriter) {
+		t.Errorf("expected ErrNoWriter on closed provider, got %v", err)
 	}
 }
 

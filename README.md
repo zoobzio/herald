@@ -11,7 +11,7 @@
 
 Bidirectional bindings between [capitan](https://github.com/zoobzio/capitan) events and message brokers.
 
-Emit a capitan event, herald publishes it. Herald receives a message, capitan emits it. Same types, same signals, automatic serialization.
+Emit a [capitan](https://github.com/zoobzio/capitan) event, herald publishes it. Herald receives a message, capitan emits it. Same types, same signals, automatic serialization.
 
 ## Two Directions
 
@@ -22,7 +22,7 @@ pub.Start()
 
 // broker → capitan: Subscribe to external messages as events
 sub := herald.NewSubscriber(provider, signal, key, nil)
-sub.Start()
+sub.Start(ctx)
 ```
 
 One provider, one signal, one key. Herald handles serialization, acknowledgment, and error routing.
@@ -95,7 +95,7 @@ defer provider.Close()
 
 // Subscribe: broker messages become capitan events
 sub := herald.NewSubscriber(provider, orderCreated, orderKey, nil)
-sub.Start()
+sub.Start(ctx)
 defer sub.Close()
 
 // Handle with standard capitan hooks

@@ -250,7 +250,7 @@ func TestSubscriber_WithApply_TransformsValue(t *testing.T) {
 	}
 
 	sub := NewSubscriber(provider, signal, key, opts, WithSubscriberCapitan[TestEvent](c))
-	sub.Start()
+	sub.Start(context.Background())
 
 	event := TestEvent{OrderID: "123", Total: 50.0}
 	data, err := json.Marshal(event)
@@ -300,7 +300,7 @@ func TestSubscriber_WithApply_ErrorTriggersNack(t *testing.T) {
 	}
 
 	sub := NewSubscriber(provider, signal, key, opts, WithSubscriberCapitan[TestEvent](c))
-	sub.Start()
+	sub.Start(context.Background())
 
 	event := TestEvent{OrderID: "123", Total: -5.0}
 	data, err := json.Marshal(event)

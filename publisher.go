@@ -40,7 +40,13 @@ func WithPublisherCodec[T any](c Codec) PublisherOption[T] {
 }
 
 // NewPublisher creates a Publisher that observes the given signal and publishes T to the broker.
-// Pipeline options wrap the publish operation with reliability features.
+//
+// Parameters:
+//   - provider: broker implementation (kafka, nats, sqs, etc.)
+//   - signal: capitan signal to observe for events
+//   - key: typed key for extracting T from events
+//   - pipelineOpts: reliability middleware (retry, timeout, circuit breaker); nil for none
+//   - opts: publisher configuration (custom codec, custom capitan instance)
 func NewPublisher[T any](provider Provider, signal capitan.Signal, key capitan.GenericKey[T], pipelineOpts []Option[T], opts ...PublisherOption[T]) *Publisher[T] {
 	p := &Publisher[T]{
 		provider: provider,
