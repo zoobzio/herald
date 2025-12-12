@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -51,7 +52,8 @@ func (p *PostgresDB) createTable() error {
 			topic VARCHAR(255) NOT NULL,
 			data BYTEA NOT NULL,
 			metadata JSONB,
-			created_at TIMESTAMPTZ DEFAULT NOW()
+			created_at TIMESTAMPTZ DEFAULT NOW(),
+			claimed_at TIMESTAMPTZ
 		)
 	`, p.table)
 
@@ -90,7 +92,17 @@ func (p *PostgresDB) Insert(ctx context.Context, topic string, data []byte, meta
 }
 
 // Fetch retrieves pending messages from the queue table.
-func (p *PostgresDB) Fetch(ctx context.Context, topic string, limit int) ([]Message, error) {
+// If visibilityTimeout > 0, messages are atomically claimed using PostgreSQL's
+// UPDATE...RETURNING with row-level locking for concurrent safety.
+func (p *PostgresDB) Fetch(ctx context.Context, topic string, limit int, visibilityTimeout time.Duration) ([]Message, error) {
+	if visibilityTimeout > 0 {
+		return p.fetchWithClaim(ctx, topic, limit, visibilityTimeout)
+	}
+	return p.fetchSimple(ctx, topic, limit)
+}
+
+// fetchSimple retrieves messages without claiming (original behavior).
+func (p *PostgresDB) fetchSimple(ctx context.Context, topic string, limit int) ([]Message, error) {
 	query := fmt.Sprintf(`
 		SELECT id, data, metadata
 		FROM %s
@@ -105,6 +117,39 @@ func (p *PostgresDB) Fetch(ctx context.Context, topic string, limit int) ([]Mess
 	}
 	defer rows.Close()
 
+	return p.scanMessages(rows)
+}
+
+// fetchWithClaim retrieves and atomically claims messages using UPDATE...RETURNING.
+func (p *PostgresDB) fetchWithClaim(ctx context.Context, topic string, limit int, visibilityTimeout time.Duration) ([]Message, error) {
+	now := time.Now()
+	claimUntil := now.Add(visibilityTimeout)
+
+	// PostgreSQL supports UPDATE...RETURNING with subquery for atomic claim
+	query := fmt.Sprintf(`
+		UPDATE %s
+		SET claimed_at = $1
+		WHERE id IN (
+			SELECT id FROM %s
+			WHERE topic = $2 AND (claimed_at IS NULL OR claimed_at < $3)
+			ORDER BY created_at ASC
+			LIMIT $4
+			FOR UPDATE SKIP LOCKED
+		)
+		RETURNING id, data, metadata
+	`, p.table, p.table)
+
+	rows, err := p.db.QueryContext(ctx, query, claimUntil, topic, now, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return p.scanMessages(rows)
+}
+
+// scanMessages extracts Message structs from rows.
+func (p *PostgresDB) scanMessages(rows *sql.Rows) ([]Message, error) {
 	var messages []Message
 	for rows.Next() {
 		var msg Message
@@ -134,6 +179,18 @@ func (p *PostgresDB) Delete(ctx context.Context, id string) error {
 	query := fmt.Sprintf(`DELETE FROM %s WHERE id = $1`, p.table)
 	_, err := p.db.ExecContext(ctx, query, id)
 	return err
+}
+
+// Release makes a claimed message visible again by clearing claimed_at.
+func (p *PostgresDB) Release(ctx context.Context, id string) error {
+	query := fmt.Sprintf(`UPDATE %s SET claimed_at = NULL WHERE id = $1`, p.table)
+	_, err := p.db.ExecContext(ctx, query, id)
+	return err
+}
+
+// Ping verifies database connectivity.
+func (p *PostgresDB) Ping(ctx context.Context) error {
+	return p.db.PingContext(ctx)
 }
 
 // Close closes the database connection.

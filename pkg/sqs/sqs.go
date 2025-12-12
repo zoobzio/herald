@@ -124,7 +124,8 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 					Data:     []byte(aws.ToString(msg.Body)),
 					Metadata: metadata,
 					Ack: func() error {
-						_, err := client.DeleteMessage(ctx, &sqs.DeleteMessageInput{
+						// Use Background context: ack should succeed even if subscription context is cancelled
+						_, err := client.DeleteMessage(context.Background(), &sqs.DeleteMessageInput{
 							QueueUrl:      aws.String(queueURL),
 							ReceiptHandle: receiptHandle,
 						})
@@ -146,6 +147,17 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 	}()
 
 	return out
+}
+
+// Ping verifies SQS connectivity by getting queue attributes.
+func (p *Provider) Ping(ctx context.Context) error {
+	if p.client == nil {
+		return herald.ErrNoWriter
+	}
+	_, err := p.client.GetQueueAttributes(ctx, &sqs.GetQueueAttributesInput{
+		QueueUrl: aws.String(p.queueURL),
+	})
+	return err
 }
 
 // Close releases SQS resources.

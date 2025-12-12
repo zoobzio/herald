@@ -3,6 +3,8 @@ package amqp
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/zoobzio/herald"
@@ -112,13 +114,13 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 				d := delivery
 
 				// Convert AMQP headers to metadata
+				// AMQP headers can be various types; we convert to strings
+				// Arrays are joined with commas
 				var metadata herald.Metadata
 				if len(d.Headers) > 0 {
 					metadata = make(herald.Metadata, len(d.Headers))
 					for k, v := range d.Headers {
-						if s, ok := v.(string); ok {
-							metadata[k] = s
-						}
+						metadata[k] = headerValueToString(v)
 					}
 				}
 
@@ -145,10 +147,40 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 	return out
 }
 
+// Ping verifies AMQP connectivity by checking channel status.
+func (p *Provider) Ping(ctx context.Context) error {
+	if p.channel == nil {
+		return herald.ErrNoWriter
+	}
+	if p.channel.IsClosed() {
+		return herald.ErrNoWriter
+	}
+	return nil
+}
+
 // Close releases AMQP resources.
 func (p *Provider) Close() error {
 	if p.channel != nil {
 		return p.channel.Close()
 	}
 	return nil
+}
+
+// headerValueToString converts AMQP header values to strings.
+// Arrays are joined with commas.
+func headerValueToString(v any) string {
+	switch val := v.(type) {
+	case string:
+		return val
+	case []byte:
+		return string(val)
+	case []any:
+		parts := make([]string, 0, len(val))
+		for _, item := range val {
+			parts = append(parts, headerValueToString(item))
+		}
+		return strings.Join(parts, ",")
+	default:
+		return fmt.Sprintf("%v", val)
+	}
 }

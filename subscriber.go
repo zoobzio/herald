@@ -81,8 +81,8 @@ func newSubscribeTerminal[T any](signal capitan.Signal, key capitan.GenericKey[T
 }
 
 // Start begins consuming from the broker and emitting to Capitan.
-func (s *Subscriber[T]) Start(ctx context.Context) {
-	ctx, cancel := context.WithCancel(ctx)
+func (s *Subscriber[T]) Start() {
+	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 
 	messages := s.provider.Subscribe(ctx)
@@ -127,8 +127,9 @@ func (s *Subscriber[T]) process(ctx context.Context, msg Message) {
 	// Attach message metadata to context for downstream processing.
 	// This occurs after unmarshal so metadata is available to pipeline stages
 	// and Capitan handlers, but not during deserialization itself.
+	// We copy the metadata to prevent downstream mutations from affecting the original message.
 	if msg.Metadata != nil {
-		ctx = ContextWithMetadata(ctx, msg.Metadata)
+		ctx = ContextWithMetadata(ctx, copyMetadata(msg.Metadata))
 	}
 
 	// Process through pipeline (includes emit)

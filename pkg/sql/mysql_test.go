@@ -62,7 +62,7 @@ func TestMySQLDB_InsertFetchDelete(t *testing.T) {
 	}
 
 	// Fetch messages
-	messages, err := mysqlDB.Fetch(ctx, "test-topic", 10)
+	messages, err := mysqlDB.Fetch(ctx, "test-topic", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestMySQLDB_InsertFetchDelete(t *testing.T) {
 	}
 
 	// Verify deletion
-	messages, err = mysqlDB.Fetch(ctx, "test-topic", 10)
+	messages, err = mysqlDB.Fetch(ctx, "test-topic", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch after delete: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestMySQLDB_FetchOrdering(t *testing.T) {
 	}
 
 	// Fetch with limit
-	messages, err := mysqlDB.Fetch(ctx, "test-topic", 3)
+	messages, err := mysqlDB.Fetch(ctx, "test-topic", 3, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestMySQLDB_TopicIsolation(t *testing.T) {
 	}
 
 	// Fetch from topic-a only
-	messages, err := mysqlDB.Fetch(ctx, "topic-a", 10)
+	messages, err := mysqlDB.Fetch(ctx, "topic-a", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestMySQLDB_ProviderIntegration(t *testing.T) {
 	}
 
 	// Verify message was inserted
-	messages, err := mysqlDB.Fetch(ctx, "orders", 10)
+	messages, err := mysqlDB.Fetch(ctx, "orders", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}

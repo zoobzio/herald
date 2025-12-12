@@ -67,7 +67,7 @@ func TestPostgresDB_InsertFetchDelete(t *testing.T) {
 	}
 
 	// Fetch messages
-	messages, err := postgresDB.Fetch(ctx, "test-topic", 10)
+	messages, err := postgresDB.Fetch(ctx, "test-topic", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestPostgresDB_InsertFetchDelete(t *testing.T) {
 	}
 
 	// Verify deletion
-	messages, err = postgresDB.Fetch(ctx, "test-topic", 10)
+	messages, err = postgresDB.Fetch(ctx, "test-topic", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch after delete: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestPostgresDB_FetchOrdering(t *testing.T) {
 	}
 
 	// Fetch with limit
-	messages, err := postgresDB.Fetch(ctx, "test-topic", 3)
+	messages, err := postgresDB.Fetch(ctx, "test-topic", 3, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestPostgresDB_TopicIsolation(t *testing.T) {
 	}
 
 	// Fetch from topic-a only
-	messages, err := postgresDB.Fetch(ctx, "topic-a", 10)
+	messages, err := postgresDB.Fetch(ctx, "topic-a", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestPostgresDB_ProviderIntegration(t *testing.T) {
 	}
 
 	// Verify message was inserted
-	messages, err := postgresDB.Fetch(ctx, "orders", 10)
+	messages, err := postgresDB.Fetch(ctx, "orders", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}

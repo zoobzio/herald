@@ -29,7 +29,7 @@ func TestSQLiteDB_InsertFetchDelete(t *testing.T) {
 	}
 
 	// Fetch messages
-	messages, err := sqliteDB.Fetch(ctx, "test-topic", 10)
+	messages, err := sqliteDB.Fetch(ctx, "test-topic", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestSQLiteDB_InsertFetchDelete(t *testing.T) {
 	}
 
 	// Verify deletion
-	messages, err = sqliteDB.Fetch(ctx, "test-topic", 10)
+	messages, err = sqliteDB.Fetch(ctx, "test-topic", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch after delete: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestSQLiteDB_FetchOrdering(t *testing.T) {
 	}
 
 	// Fetch with limit
-	messages, err := sqliteDB.Fetch(ctx, "test-topic", 3)
+	messages, err := sqliteDB.Fetch(ctx, "test-topic", 3, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestSQLiteDB_TopicIsolation(t *testing.T) {
 	}
 
 	// Fetch from topic-a only
-	messages, err := sqliteDB.Fetch(ctx, "topic-a", 10)
+	messages, err := sqliteDB.Fetch(ctx, "topic-a", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}
@@ -196,7 +196,7 @@ func TestSQLiteDB_NilMetadata(t *testing.T) {
 	}
 
 	// Fetch and verify nil metadata doesn't cause issues
-	messages, err := sqliteDB.Fetch(ctx, "test-topic", 10)
+	messages, err := sqliteDB.Fetch(ctx, "test-topic", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}
@@ -233,7 +233,7 @@ func TestSQLiteDB_ProviderIntegration(t *testing.T) {
 	}
 
 	// Verify message was inserted
-	messages, err := sqliteDB.Fetch(ctx, "orders", 10)
+	messages, err := sqliteDB.Fetch(ctx, "orders", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to fetch: %v", err)
 	}

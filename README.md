@@ -9,25 +9,31 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/zoobzio/herald)](go.mod)
 [![Release](https://img.shields.io/github/v/release/zoobzio/herald)](https://github.com/zoobzio/herald/releases)
 
-Bidirectional bindings between capitan events and message brokers.
+Bidirectional bindings between [capitan](https://github.com/zoobzio/capitan) events and message brokers.
 
-Herald bridges in-process event coordination ([capitan](https://github.com/zoobzio/capitan)) with external message brokers, enabling seamless integration with distributed systems.
+Emit a capitan event, herald publishes it. Herald receives a message, capitan emits it. Same types, same signals, automatic serialization.
 
-## The Power of Simplicity
-
-At its core, herald provides just two operations:
+## Two Directions
 
 ```go
-// Publish capitan events to a broker
+// capitan → broker: Publish events to external systems
 pub := herald.NewPublisher(provider, signal, key, nil)
-pub.Start(ctx)
+pub.Start()
 
-// Subscribe from a broker to capitan events
+// broker → capitan: Subscribe to external messages as events
 sub := herald.NewSubscriber(provider, signal, key, nil)
-sub.Start(ctx)
+sub.Start()
 ```
 
-**That's it.** Type-safe, bidirectional message bridging with automatic serialization and acknowledgment.
+One provider, one signal, one key. Herald handles serialization, acknowledgment, and error routing.
+
+## Installation
+
+```bash
+go get github.com/zoobzio/herald
+```
+
+Requires Go 1.23+.
 
 ## Quick Start
 
@@ -51,384 +57,166 @@ type Order struct {
 func main() {
     ctx := context.Background()
 
-    // Define signal and key
-    orderCreated := capitan.NewSignal("order.created", "New order created")
+    orderCreated := capitan.NewSignal("order.created", "New order")
     orderKey := capitan.NewKey[Order]("order", "app.Order")
 
-    // Create Kafka writer
-    writer := &kafkago.Writer{
-        Addr:  kafkago.TCP("localhost:9092"),
-        Topic: "orders-topic",
-    }
-
-    // Create Kafka provider
-    provider := kafka.New("orders-topic", kafka.WithWriter(writer))
-    defer provider.Close()
-
-    // Publish capitan events to Kafka
-    pub := herald.NewPublisher(provider, orderCreated, orderKey, nil)
-    pub.Start(ctx)
-
-    // Emit event - automatically published to Kafka
-    capitan.Emit(ctx, orderCreated, orderKey.Field(Order{
-        ID:    "ORDER-123",
-        Total: 99.99,
-    }))
-
-    capitan.Shutdown()
-    pub.Close()
-}
-```
-
-## Why herald?
-
-- **Type-safe**: Generic publishers and subscribers with compile-time checking
-- **Bidirectional**: Publish to brokers or subscribe from brokers
-- **11 providers**: Kafka, NATS, Pub/Sub, Redis, SQS, RabbitMQ, SNS, SQL, BoltDB, Firestore, io
-- **Reliable**: Built-in Ack/Nack semantics for message acknowledgment
-- **Resilient**: Pipeline middleware for retry, backoff, timeout, circuit breaker, rate limiting
-- **Composable**: Pipeline middleware via [pipz](https://github.com/zoobzio/pipz)
-- **Observable**: Errors flow through [capitan](https://github.com/zoobzio/capitan), observable via [shotel](https://github.com/zoobzio/shotel)
-
-## Installation
-
-```bash
-go get github.com/zoobzio/herald
-```
-
-Install providers as needed:
-
-```bash
-go get github.com/zoobzio/herald/pkg/kafka
-go get github.com/zoobzio/herald/pkg/nats
-go get github.com/zoobzio/herald/pkg/sqs
-# ...
-```
-
-Requirements: Go 1.23+
-
-## Core Concepts
-
-**Providers** implement broker-specific communication:
-```go
-provider := kafka.New("orders", kafka.WithWriter(writer))
-provider := nats.New("orders", nats.WithConn(conn))
-provider := sqs.New(queueURL, sqs.WithClient(client))
-```
-
-**Publishers** observe capitan signals and publish to brokers:
-```go
-pub := herald.NewPublisher(provider, signal, key, nil)
-pub.Start(ctx)
-// capitan events on 'signal' are now published to the broker
-```
-
-**Subscribers** consume from brokers and emit to capitan:
-```go
-sub := herald.NewSubscriber(provider, signal, key, nil)
-sub.Start(ctx)
-// Broker messages are now emitted to capitan on 'signal'
-```
-
-**Keys** define the typed message contract:
-```go
-type Order struct {
-    ID    string  `json:"id"`
-    Total float64 `json:"total"`
-}
-
-orderKey := capitan.NewKey[Order]("order", "app.Order")
-```
-
-### Best Practice: One Direction Per Node
-
-A node should be either a Publisher OR Subscriber for a given signal, never both. This prevents event loops in distributed topologies.
-
-```go
-// Service A: Publishes order events to Kafka
-pub := herald.NewPublisher(kafkaProvider, orderCreated, orderKey, nil)
-
-// Service B: Subscribes to order events from Kafka
-sub := herald.NewSubscriber(kafkaProvider, orderCreated, orderKey, nil)
-```
-
-## Real-World Example
-
-Here's a realistic example showing bidirectional communication between services:
-
-```go
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "time"
-
-    kafkago "github.com/segmentio/kafka-go"
-    "github.com/zoobzio/capitan"
-    "github.com/zoobzio/herald"
-    "github.com/zoobzio/herald/pkg/kafka"
-)
-
-// Message contracts
-type Order struct {
-    ID     string  `json:"id"`
-    UserID string  `json:"user_id"`
-    Total  float64 `json:"total"`
-}
-
-type OrderShipped struct {
-    OrderID   string `json:"order_id"`
-    TrackingN string `json:"tracking_number"`
-}
-
-// Signals
-var (
-    orderCreated = capitan.NewSignal("order.created", "New order placed")
-    orderShipped = capitan.NewSignal("order.shipped", "Order has shipped")
-)
-
-// Keys
-var (
-    orderKey   = capitan.NewKey[Order]("order", "app.Order")
-    shippedKey = capitan.NewKey[OrderShipped]("shipped", "app.OrderShipped")
-)
-
-func main() {
-    ctx := context.Background()
-
-    // Kafka writer for publishing
     writer := &kafkago.Writer{
         Addr:  kafkago.TCP("localhost:9092"),
         Topic: "orders",
     }
+    provider := kafka.New("orders", kafka.WithWriter(writer))
+    defer provider.Close()
 
-    // Kafka reader for subscribing to shipping updates
-    reader := kafkago.NewReader(kafkago.ReaderConfig{
-        Brokers: []string{"localhost:9092"},
-        Topic:   "shipments",
-        GroupID: "order-service",
-    })
+    pub := herald.NewPublisher(provider, orderCreated, orderKey, nil)
+    pub.Start()
+    defer pub.Close()
 
-    // Providers
-    orderProvider := kafka.New("orders", kafka.WithWriter(writer))
-    shipmentProvider := kafka.New("shipments", kafka.WithReader(reader))
-    defer orderProvider.Close()
-    defer shipmentProvider.Close()
-
-    // Publish order events to Kafka with retry
-    pub := herald.NewPublisher(orderProvider, orderCreated, orderKey,
-        []herald.Option[Order]{
-            herald.WithRetry[Order](3),
-            herald.WithTimeout[Order](5 * time.Second),
-        },
-    )
-    pub.Start(ctx)
-
-    // Subscribe to shipping updates from Kafka
-    sub := herald.NewSubscriber(shipmentProvider, orderShipped, shippedKey, nil)
-    sub.Start(ctx)
-
-    // Handle shipping updates locally
-    capitan.Hook(orderShipped, func(ctx context.Context, e *capitan.Event) {
-        shipped, _ := shippedKey.From(e)
-        fmt.Printf("Order %s shipped with tracking: %s\n",
-            shipped.OrderID, shipped.TrackingN)
-    })
-
-    // Hook into herald errors for monitoring
-    capitan.Hook(herald.ErrorSignal, func(ctx context.Context, e *capitan.Event) {
-        err, _ := herald.ErrorKey.From(e)
-        log.Printf("[HERALD ERROR] %s on %s: %s", err.Operation, err.Signal, err.Err)
-    })
-
-    // Emit an order event - automatically published to Kafka
+    // Events automatically published to Kafka
     capitan.Emit(ctx, orderCreated, orderKey.Field(Order{
-        ID:     "ORDER-123",
-        UserID: "user_456",
-        Total:  99.99,
+        ID:    "ORD-123",
+        Total: 99.99,
     }))
 
-    // Keep running...
-    select {}
+    capitan.Shutdown()
 }
 ```
 
-## Pipeline Options
-
-Add reliability features to publishers and subscribers:
+## Subscribing
 
 ```go
-pub := herald.NewPublisher(provider, signal, key, []herald.Option[Order]{
-    herald.WithRetry[Order](3),                              // Retry up to 3 times
-    herald.WithBackoff[Order](3, 100*time.Millisecond),      // Exponential backoff
-    herald.WithTimeout[Order](5*time.Second),                // Timeout per operation
-    herald.WithCircuitBreaker[Order](5, 30*time.Second),     // Open after 5 failures
-    herald.WithRateLimit[Order](100, 10),                    // 100 ops/sec, burst 10
+// Create provider with reader
+reader := kafkago.NewReader(kafkago.ReaderConfig{
+    Brokers: []string{"localhost:9092"},
+    Topic:   "orders",
+    GroupID: "order-processor",
+})
+provider := kafka.New("orders", kafka.WithReader(reader))
+defer provider.Close()
+
+// Subscribe: broker messages become capitan events
+sub := herald.NewSubscriber(provider, orderCreated, orderKey, nil)
+sub.Start()
+defer sub.Close()
+
+// Handle with standard capitan hooks
+capitan.Hook(orderCreated, func(ctx context.Context, e *capitan.Event) {
+    order, _ := orderKey.From(e)
+    fmt.Printf("Received order: %s\n", order.ID)
 })
 ```
 
-| Option | Description |
-|--------|-------------|
-| `WithRetry[T](n)` | Retry failed operations up to n times |
-| `WithBackoff[T](n, delay)` | Retry with exponential backoff (delay doubles each attempt) |
-| `WithTimeout[T](d)` | Cancel operations exceeding duration |
-| `WithCircuitBreaker[T](failures, recovery)` | Open circuit after consecutive failures |
-| `WithRateLimit[T](rate, burst)` | Limit operations per second |
-| `WithErrorHandler[T](handler)` | Custom error handling pipeline |
-| `WithPipeline[T](custom)` | Full custom pipeline control |
+Messages are automatically deserialized, emitted as capitan events, and acknowledged on success.
 
-## Custom Codecs
+## Why herald?
 
-By default, herald uses JSON serialization. To use an alternative format:
-
-```go
-type MsgpackCodec struct{}
-
-func (MsgpackCodec) Marshal(v any) ([]byte, error) {
-    return msgpack.Marshal(v)
-}
-
-func (MsgpackCodec) Unmarshal(data []byte, v any) error {
-    return msgpack.Unmarshal(data, v)
-}
-
-func (MsgpackCodec) ContentType() string {
-    return "application/msgpack"
-}
-
-// Use with publisher
-pub := herald.NewPublisher(provider, signal, key, nil,
-    herald.WithPublisherCodec[Order](MsgpackCodec{}))
-
-// Use with subscriber
-sub := herald.NewSubscriber(provider, signal, key, nil,
-    herald.WithSubscriberCodec[Order](MsgpackCodec{}))
-```
-
-The codec's `ContentType()` is automatically added to message metadata unless already present.
-
-## Metadata
-
-Metadata flows through the system for cross-cutting concerns like tracing and correlation:
-
-```go
-// Attach metadata to context before emitting
-ctx := herald.ContextWithMetadata(ctx, herald.Metadata{
-    "correlation-id": "abc-123",
-    "trace-id":       "xyz-789",
-})
-capitan.Emit(ctx, signal, key.Field(value))
-
-// Extract metadata in handlers (populated by subscriber)
-capitan.Hook(signal, func(ctx context.Context, e *capitan.Event) {
-    meta := herald.MetadataFromContext(ctx)
-    correlationID := meta["correlation-id"]
-})
-```
-
-Metadata maps to broker-native headers (Kafka headers, AMQP properties, SQS attributes, etc.).
-
-## Error Handling
-
-All operational errors flow through capitan's event system:
-
-```go
-// Hook into herald errors
-capitan.Hook(herald.ErrorSignal, func(ctx context.Context, e *capitan.Event) {
-    err, _ := herald.ErrorKey.From(e)
-
-    log.Printf("Operation: %s", err.Operation)  // "publish", "subscribe", "unmarshal"
-    log.Printf("Signal: %s", err.Signal)        // User's signal name
-    log.Printf("Error: %s", err.Err)            // Error message
-    log.Printf("Nack'd: %t", err.Nack)          // Was message nack'd for redelivery?
-
-    if err.Raw != nil {
-        log.Printf("Raw payload: %s", err.Raw)  // For unmarshal errors
-    }
-})
-```
-
-## Acknowledgment Semantics
-
-Each provider implements broker-appropriate acknowledgment:
-
-| Provider | Ack | Nack |
-|----------|-----|------|
-| Kafka | Commit offset | Don't commit (redelivered) |
-| NATS | No-op | No-op |
-| Pub/Sub | `msg.Ack()` | `msg.Nack()` |
-| Redis | `XACK` (consumer groups) | Remains pending |
-| SQS | Delete message | Returns after visibility timeout |
-| AMQP | `Ack(false)` | `Nack(false, true)` with requeue |
-| SNS | N/A (publish-only) | N/A |
-| SQL | Delete row | Remains for retry |
-| BoltDB | Delete key | Remains for retry |
-| Firestore | Delete document | Remains for retry |
-| io | No-op | No-op |
-
-## Multiple Capitan Instances
-
-Use custom capitan instances for isolation:
-
-```go
-c := capitan.New(capitan.WithBufferSize(256))
-
-pub := herald.NewPublisher(provider, signal, key, nil,
-    herald.WithPublisherCapitan[Order](c))
-
-sub := herald.NewSubscriber(provider, signal, key, nil,
-    herald.WithSubscriberCapitan[Order](c))
-```
+- **Type-safe** — Generic publishers and subscribers with compile-time checking
+- **Bidirectional** — Publish to brokers or subscribe from brokers
+- **12 providers** — Kafka, NATS, JetStream, Pub/Sub, Redis, SQS, RabbitMQ, SNS, SQL, BoltDB, Firestore, io
+- **Reliable** — Pipeline middleware for retry, backoff, timeout, circuit breaker, rate limiting
+- **Observable** — Errors flow through [capitan](https://github.com/zoobzio/capitan)
 
 ## Providers
 
 | Provider | Package | Use Case |
 |----------|---------|----------|
-| Kafka | [`herald/pkg/kafka`](pkg/kafka) | High-throughput streaming |
-| NATS | [`herald/pkg/nats`](pkg/nats) | Lightweight cloud messaging |
-| Google Pub/Sub | [`herald/pkg/pubsub`](pkg/pubsub) | GCP managed messaging |
-| Redis Streams | [`herald/pkg/redis`](pkg/redis) | In-memory with persistence |
-| AWS SQS | [`herald/pkg/sqs`](pkg/sqs) | AWS managed queues |
-| RabbitMQ/AMQP | [`herald/pkg/amqp`](pkg/amqp) | Traditional message broker |
-| AWS SNS | [`herald/pkg/sns`](pkg/sns) | Pub/sub fanout |
-| SQL | [`herald/pkg/sql`](pkg/sql) | Database-backed queues |
-| BoltDB | [`herald/pkg/bolt`](pkg/bolt) | Embedded local queues |
-| Firestore | [`herald/pkg/firestore`](pkg/firestore) | Firebase/GCP document store |
-| io | [`herald/pkg/io`](pkg/io) | Testing with io.Reader/Writer |
+| Kafka | [`pkg/kafka`](pkg/kafka) | High-throughput streaming |
+| NATS | [`pkg/nats`](pkg/nats) | Lightweight cloud messaging |
+| JetStream | [`pkg/jetstream`](pkg/jetstream) | NATS with persistence and headers |
+| Google Pub/Sub | [`pkg/pubsub`](pkg/pubsub) | GCP managed messaging |
+| Redis Streams | [`pkg/redis`](pkg/redis) | In-memory with persistence |
+| AWS SQS | [`pkg/sqs`](pkg/sqs) | AWS managed queues |
+| RabbitMQ/AMQP | [`pkg/amqp`](pkg/amqp) | Traditional message broker |
+| AWS SNS | [`pkg/sns`](pkg/sns) | Pub/sub fanout |
+| SQL | [`pkg/sql`](pkg/sql) | Database-backed queues |
+| BoltDB | [`pkg/bolt`](pkg/bolt) | Embedded local queues |
+| Firestore | [`pkg/firestore`](pkg/firestore) | Firebase/GCP document store |
+| io | [`pkg/io`](pkg/io) | Testing with io.Reader/Writer |
 
-## Custom Providers
+## Processing Hooks
 
-Implement the `Provider` interface for custom brokers:
+Add processing steps via pipz primitives:
 
 ```go
-type Provider interface {
-    Publish(ctx context.Context, data []byte, metadata Metadata) error
-    Subscribe(ctx context.Context) <-chan Result[Message]
-    Close() error
-}
-
-type Message struct {
-    Data     []byte
-    Metadata Metadata
-    Ack      func() error
-    Nack     func() error
-}
+pub := herald.NewPublisher(provider, signal, key, []herald.Option[Order]{
+    herald.WithApply[Order]("validate", func(ctx context.Context, order Order) (Order, error) {
+        if order.Total < 0 {
+            return order, errors.New("invalid total")
+        }
+        return order, nil
+    }),
+    herald.WithEffect[Order]("log", func(ctx context.Context, order Order) error {
+        log.Printf("order %s", order.ID)
+        return nil
+    }),
+    herald.WithTransform[Order]("enrich", func(ctx context.Context, order Order) Order {
+        order.ProcessedAt = time.Now()
+        return order
+    }),
+})
 ```
 
-## Testing
+- `WithApply` — Transform with possible error
+- `WithEffect` — Side effect, no transform
+- `WithTransform` — Pure transform, cannot fail
 
-Run tests:
-```bash
-go test -v ./...
+## Pipeline Options
+
+Add reliability features via [pipz](https://github.com/zoobzio/pipz):
+
+```go
+pub := herald.NewPublisher(provider, signal, key, []herald.Option[Order]{
+    herald.WithRetry[Order](3),
+    herald.WithBackoff[Order](3, 100*time.Millisecond),
+    herald.WithTimeout[Order](5*time.Second),
+    herald.WithCircuitBreaker[Order](5, 30*time.Second),
+    herald.WithRateLimit[Order](100, 10),
+})
 ```
 
-Run with coverage:
-```bash
-go test -v -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
+See [Reliability Guide](docs/3.guides/1.reliability.md) for middleware and pipeline details.
+
+## Acknowledgment
+
+Herald handles message acknowledgment automatically:
+
+| Outcome | Action |
+|---------|--------|
+| Message processed successfully | `Ack()` — Message acknowledged |
+| Deserialization fails | `Nack()` — Message returned for redelivery |
+| Provider doesn't support ack | No-op (e.g., NATS core, SNS) |
+
+## Error Handling
+
+All errors flow through capitan:
+
+```go
+capitan.Hook(herald.ErrorSignal, func(ctx context.Context, e *capitan.Event) {
+    err, _ := herald.ErrorKey.From(e)
+    log.Printf("[herald] %s: %v", err.Operation, err.Err)
+})
 ```
+
+See [Error Handling Guide](docs/3.guides/3.errors.md) for details.
+
+## Documentation
+
+Full documentation is available in the [docs/](docs/) directory:
+
+### Learn
+- [Overview](docs/1.overview.md) — Architecture and philosophy
+- [Publishing](docs/2.learn/1.publishing.md) — Forward capitan events to brokers
+- [Subscribing](docs/2.learn/2.subscribing.md) — Consume broker messages as capitan events
+- [Providers](docs/2.learn/3.providers.md) — Available broker implementations
+
+### Guides
+- [Reliability](docs/3.guides/1.reliability.md) — Retry, backoff, circuit breaker, rate limiting
+- [Codecs](docs/3.guides/2.codecs.md) — Custom serialization formats
+- [Error Handling](docs/3.guides/3.errors.md) — Centralized error management
+- [Testing](docs/3.guides/4.testing.md) — Testing herald-based applications
+
+### Reference
+- [API Reference](docs/4.reference/1.api.md) — Complete function and type documentation
+- [Providers Reference](docs/4.reference/2.providers.md) — Provider configuration details
 
 ## Contributing
 
@@ -439,4 +227,4 @@ Contributions welcome! Please ensure:
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License — see [LICENSE](LICENSE) for details.

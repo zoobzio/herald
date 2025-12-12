@@ -134,6 +134,14 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 	return out
 }
 
+// Ping verifies io provider is configured with at least a reader or writer.
+func (p *Provider) Ping(ctx context.Context) error {
+	if p.reader == nil && p.writer == nil {
+		return herald.ErrNoWriter
+	}
+	return nil
+}
+
 // Close is a no-op for io provider.
 // The caller is responsible for closing the underlying reader/writer.
 func (p *Provider) Close() error {

@@ -16,8 +16,10 @@ type mockDB struct {
 		data  []byte
 	}
 	deleted   []string
+	released  []string
 	fetchErr  error
 	insertErr error
+	pingErr   error
 	closed    bool
 	nextID    int
 }
@@ -37,7 +39,7 @@ func (m *mockDB) Insert(ctx context.Context, topic string, data []byte, metadata
 	return nil
 }
 
-func (m *mockDB) Fetch(ctx context.Context, topic string, limit int) ([]Message, error) {
+func (m *mockDB) Fetch(_ context.Context, _ string, limit int, _ time.Duration) ([]Message, error) {
 	if m.fetchErr != nil {
 		return nil, m.fetchErr
 	}
@@ -68,6 +70,17 @@ func (m *mockDB) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (m *mockDB) Release(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.released = append(m.released, id)
+	return nil
+}
+
+func (m *mockDB) Ping(_ context.Context) error {
+	return m.pingErr
+}
+
 func (m *mockDB) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -88,6 +101,12 @@ func (m *mockDB) Deleted() []string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.deleted
+}
+
+func (m *mockDB) Released() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.released
 }
 
 func TestProvider_Publish(t *testing.T) {
@@ -225,5 +244,116 @@ func TestProvider_CloseNil(t *testing.T) {
 	err := provider.Close()
 	if err != nil {
 		t.Fatalf("unexpected error with nil db: %v", err)
+	}
+}
+
+func TestProvider_Ping(t *testing.T) {
+	db := &mockDB{}
+	provider := New("test-topic", WithDB(db))
+
+	err := provider.Ping(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestProvider_PingError(t *testing.T) {
+	testErr := errors.New("connection lost")
+	db := &mockDB{pingErr: testErr}
+	provider := New("test-topic", WithDB(db))
+
+	err := provider.Ping(context.Background())
+	if err != testErr {
+		t.Fatalf("expected %v, got %v", testErr, err)
+	}
+}
+
+func TestProvider_PingNoDB(t *testing.T) {
+	provider := New("test-topic")
+
+	err := provider.Ping(context.Background())
+	if err == nil {
+		t.Fatal("expected error with nil db")
+	}
+}
+
+func TestProvider_NackReleasesMessage(t *testing.T) {
+	db := &mockDB{
+		messages: []Message{
+			{ID: "msg-1", Data: []byte(`{"order":"1"}`)},
+		},
+	}
+	provider := New("test-topic", WithDB(db), WithPollInterval(10*time.Millisecond), WithVisibilityTimeout(30*time.Second))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := provider.Subscribe(ctx)
+
+	select {
+	case result := <-ch:
+		if result.IsError() {
+			t.Fatalf("unexpected error: %v", result.Error())
+		}
+		// Nack should release the message
+		if err := result.Value().Nack(); err != nil {
+			t.Fatalf("nack failed: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timeout")
+	}
+
+	cancel()
+	provider.Close()
+
+	released := db.Released()
+	if len(released) != 1 {
+		t.Fatalf("expected 1 released message, got %d", len(released))
+	}
+	if released[0] != "msg-1" {
+		t.Errorf("expected released message 'msg-1', got %q", released[0])
+	}
+}
+
+func TestProvider_NackNoOpWithoutVisibilityTimeout(t *testing.T) {
+	db := &mockDB{
+		messages: []Message{
+			{ID: "msg-1", Data: []byte(`{"order":"1"}`)},
+		},
+	}
+	// No visibility timeout set
+	provider := New("test-topic", WithDB(db), WithPollInterval(10*time.Millisecond))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := provider.Subscribe(ctx)
+
+	select {
+	case result := <-ch:
+		if result.IsError() {
+			t.Fatalf("unexpected error: %v", result.Error())
+		}
+		// Nack should be a no-op
+		if err := result.Value().Nack(); err != nil {
+			t.Fatalf("nack failed: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timeout")
+	}
+
+	cancel()
+	provider.Close()
+
+	released := db.Released()
+	if len(released) != 0 {
+		t.Fatalf("expected 0 released messages (no visibility timeout), got %d", len(released))
+	}
+}
+
+func TestProvider_VisibilityTimeoutOption(t *testing.T) {
+	db := &mockDB{}
+	provider := New("test-topic", WithDB(db), WithVisibilityTimeout(5*time.Minute))
+
+	// Check that the option was applied by verifying behavior
+	// (We can't directly access private fields, so we test through behavior)
+	if provider.visibilityTimeout != 5*time.Minute {
+		t.Errorf("expected visibility timeout 5m, got %v", provider.visibilityTimeout)
 	}
 }

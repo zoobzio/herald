@@ -71,6 +71,16 @@ func (m *MockProvider) Subscribe(_ context.Context) <-chan herald.Result[herald.
 	return ch
 }
 
+// Ping verifies mock provider connectivity.
+func (m *MockProvider) Ping(_ context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.closed {
+		return herald.ErrNoWriter
+	}
+	return nil
+}
+
 // Close marks the provider as closed.
 func (m *MockProvider) Close() error {
 	m.mu.Lock()

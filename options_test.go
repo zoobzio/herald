@@ -37,7 +37,7 @@ func TestPublisher_WithBackoff(t *testing.T) {
 	}
 
 	pub := NewPublisher(provider, signal, key, opts, WithPublisherCapitan[TestEvent](c))
-	pub.Start(context.Background())
+	pub.Start()
 
 	c.Emit(context.Background(), signal, key.Field(TestEvent{OrderID: "retry-test"}))
 
@@ -72,7 +72,7 @@ func TestPublisher_WithTimeout(t *testing.T) {
 	}
 
 	pub := NewPublisher(provider, signal, key, opts, WithPublisherCapitan[TestEvent](c))
-	pub.Start(context.Background())
+	pub.Start()
 
 	start := time.Now()
 	c.Emit(context.Background(), signal, key.Field(TestEvent{OrderID: "timeout-test"}))
@@ -108,7 +108,7 @@ func TestPublisher_WithRateLimit(t *testing.T) {
 	}
 
 	pub := NewPublisher(provider, signal, key, opts, WithPublisherCapitan[TestEvent](c))
-	pub.Start(context.Background())
+	pub.Start()
 
 	// Emit 5 events quickly
 	for i := 0; i < 5; i++ {
@@ -151,8 +151,7 @@ func TestSubscriber_WithTimeout(t *testing.T) {
 	}
 
 	sub := NewSubscriber(provider, signal, key, opts, WithSubscriberCapitan[TestEvent](c))
-	ctx, cancel := context.WithCancel(context.Background())
-	sub.Start(ctx)
+	sub.Start()
 
 	event := TestEvent{OrderID: "sub-timeout", Total: 1.0}
 	data, err := json.Marshal(event)
@@ -173,7 +172,6 @@ func TestSubscriber_WithTimeout(t *testing.T) {
 		t.Fatal("timeout waiting for event")
 	}
 
-	cancel()
 	sub.Close()
 
 	if received.OrderID != "sub-timeout" {
@@ -209,8 +207,7 @@ func TestSubscriber_WithRateLimit(t *testing.T) {
 	}
 
 	sub := NewSubscriber(provider, signal, key, opts, WithSubscriberCapitan[TestEvent](c))
-	ctx, cancel := context.WithCancel(context.Background())
-	sub.Start(ctx)
+	sub.Start()
 
 	// Send 3 events
 	for i := 0; i < 3; i++ {
@@ -234,7 +231,6 @@ func TestSubscriber_WithRateLimit(t *testing.T) {
 		t.Fatal("timeout waiting for events")
 	}
 
-	cancel()
 	sub.Close()
 
 	if received.Load() != 3 {
@@ -263,7 +259,7 @@ func TestWithPipeline_CustomPipeline(t *testing.T) {
 	}
 
 	pub := NewPublisher(provider, signal, key, opts, WithPublisherCapitan[TestEvent](c))
-	pub.Start(context.Background())
+	pub.Start()
 
 	c.Emit(context.Background(), signal, key.Field(TestEvent{OrderID: "custom"}))
 
@@ -296,7 +292,7 @@ func TestPublisher_WithCircuitBreaker(t *testing.T) {
 	}
 
 	pub := NewPublisher(provider, signal, key, opts, WithPublisherCapitan[TestEvent](c))
-	pub.Start(context.Background())
+	pub.Start()
 
 	// Emit 5 events - first 2 should fail and open circuit, rest should be rejected
 	for i := 0; i < 5; i++ {
@@ -337,7 +333,7 @@ func TestPublisher_WithErrorHandler(t *testing.T) {
 	}
 
 	pub := NewPublisher(provider, signal, key, opts, WithPublisherCapitan[TestEvent](c))
-	pub.Start(context.Background())
+	pub.Start()
 
 	c.Emit(context.Background(), signal, key.Field(TestEvent{OrderID: "error-test"}))
 

@@ -165,7 +165,8 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 						Metadata: metadata,
 						Ack: func() error {
 							if group != "" {
-								return client.XAck(ctx, streamName, group, msgID).Err()
+								// Use Background context: ack should succeed even if subscription context is cancelled
+								return client.XAck(context.Background(), streamName, group, msgID).Err()
 							}
 							return nil
 						},
@@ -186,6 +187,14 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 	}()
 
 	return out
+}
+
+// Ping verifies Redis connectivity.
+func (p *Provider) Ping(ctx context.Context) error {
+	if p.client == nil {
+		return herald.ErrNoWriter
+	}
+	return p.client.Ping(ctx).Err()
 }
 
 // Close releases Redis resources.

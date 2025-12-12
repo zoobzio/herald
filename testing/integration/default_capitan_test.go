@@ -48,6 +48,10 @@ func (m *mockProvider) Subscribe(_ context.Context) <-chan herald.Result[herald.
 	return m.subCh
 }
 
+func (*mockProvider) Ping(_ context.Context) error {
+	return nil
+}
+
 func (m *mockProvider) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -85,8 +89,7 @@ func TestSubscriber_DefaultCapitanEmit(t *testing.T) {
 
 	// Create subscriber WITHOUT WithSubscriberCapitan - uses default global capitan
 	sub := herald.NewSubscriber(provider, signal, key, nil)
-	ctx, cancel := context.WithCancel(context.Background())
-	sub.Start(ctx)
+	sub.Start()
 
 	event := TestEvent{OrderID: "default-emit", Total: 42.0}
 	data, err := json.Marshal(event)
@@ -108,7 +111,6 @@ func TestSubscriber_DefaultCapitanEmit(t *testing.T) {
 		t.Fatal("timeout waiting for event")
 	}
 
-	cancel()
 	sub.Close()
 
 	if received.OrderID != "default-emit" {
@@ -132,7 +134,7 @@ func TestPublisher_DefaultCapitanObserve(t *testing.T) {
 
 	// Create publisher WITHOUT WithPublisherCapitan - uses default global capitan
 	pub := herald.NewPublisher(provider, signal, key, nil)
-	pub.Start(context.Background())
+	pub.Start()
 
 	// Emit to global capitan
 	capitan.Emit(context.Background(), signal, key.Field(TestEvent{OrderID: "default-pub", Total: 99.0}))

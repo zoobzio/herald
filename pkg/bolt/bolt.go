@@ -181,6 +181,17 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 	return out
 }
 
+// Ping verifies BoltDB connectivity by checking if the database is open.
+func (p *Provider) Ping(ctx context.Context) error {
+	if p.db == nil {
+		return herald.ErrNoWriter
+	}
+	// BoltDB doesn't have a ping; verify db is accessible by attempting a read tx
+	return p.db.View(func(tx *bbolt.Tx) error {
+		return nil
+	})
+}
+
 // Close releases BoltDB resources.
 func (p *Provider) Close() error {
 	if p.db != nil {

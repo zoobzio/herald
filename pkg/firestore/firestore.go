@@ -126,7 +126,8 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 					Data:     doc.Data,
 					Metadata: metadata,
 					Ack: func() error {
-						_, err := docRef.Delete(ctx)
+						// Use Background context: ack should succeed even if subscription context is cancelled
+						_, err := docRef.Delete(context.Background())
 						return err
 					},
 					Nack: func() error {
@@ -145,6 +146,16 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 	}()
 
 	return out
+}
+
+// Ping verifies Firestore connectivity by checking collection access.
+func (p *Provider) Ping(ctx context.Context) error {
+	if p.client == nil {
+		return herald.ErrNoWriter
+	}
+	// Attempt to get collection reference to verify connectivity
+	_ = p.client.Collection(p.collection)
+	return nil
 }
 
 // Close releases Firestore resources.

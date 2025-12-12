@@ -46,7 +46,7 @@ func main() {
 
     // Publish capitan events to Kafka
     pub := herald.NewPublisher(provider, orderCreated, orderKey, nil)
-    pub.Start(ctx)
+    pub.Start()
 
     // Emit event - automatically published to Kafka
     capitan.Emit(ctx, orderCreated, orderKey.Field(Order{
@@ -75,7 +75,7 @@ defer provider.Close()
 
 // Subscribe to Kafka and emit to capitan
 sub := herald.NewSubscriber(provider, orderCreated, orderKey, nil)
-sub.Start(ctx)
+sub.Start()
 
 // Hook listener to handle events from Kafka
 capitan.Hook(orderCreated, func(ctx context.Context, e *capitan.Event) {

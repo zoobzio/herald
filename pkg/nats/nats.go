@@ -118,6 +118,14 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 	return out
 }
 
+// Ping verifies NATS connectivity.
+func (p *Provider) Ping(ctx context.Context) error {
+	if p.conn == nil {
+		return herald.ErrNoWriter
+	}
+	return p.conn.FlushWithContext(ctx)
+}
+
 // Close releases NATS resources.
 func (p *Provider) Close() error {
 	if p.sub != nil {

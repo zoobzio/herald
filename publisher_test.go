@@ -40,6 +40,10 @@ func (m *mockProvider) Subscribe(_ context.Context) <-chan Result[Message] {
 	return m.subCh
 }
 
+func (*mockProvider) Ping(_ context.Context) error {
+	return nil
+}
+
 func (m *mockProvider) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -67,7 +71,7 @@ func TestPublisher_Start(t *testing.T) {
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
 	pub := NewPublisher(provider, signal, key, nil, WithPublisherCapitan[TestEvent](c))
-	pub.Start(context.Background())
+	pub.Start()
 
 	c.Emit(context.Background(), signal, key.Field(TestEvent{
 		OrderID: "ORD-123",
@@ -106,7 +110,7 @@ func TestPublisher_IgnoresOtherSignals(t *testing.T) {
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
 	pub := NewPublisher(provider, signal, key, nil, WithPublisherCapitan[TestEvent](c))
-	pub.Start(context.Background())
+	pub.Start()
 
 	// Emit to other signal
 	c.Emit(context.Background(), otherSignal, key.Field(TestEvent{OrderID: "ignored"}))
@@ -130,7 +134,7 @@ func TestPublisher_IgnoresMissingField(t *testing.T) {
 	otherKey := capitan.NewStringKey("other")
 
 	pub := NewPublisher(provider, signal, key, nil, WithPublisherCapitan[TestEvent](c))
-	pub.Start(context.Background())
+	pub.Start()
 
 	// Emit with wrong field type
 	c.Emit(context.Background(), signal, otherKey.Field("not the right type"))
@@ -153,7 +157,7 @@ func TestPublisher_Close(t *testing.T) {
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
 	pub := NewPublisher(provider, signal, key, nil, WithPublisherCapitan[TestEvent](c))
-	pub.Start(context.Background())
+	pub.Start()
 	pub.Close()
 
 	// Emit after close
@@ -176,7 +180,7 @@ func TestPublisher_DefaultCapitan(t *testing.T) {
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
 	pub := NewPublisher(provider, signal, key, nil)
-	pub.Start(context.Background())
+	pub.Start()
 
 	capitan.Emit(context.Background(), signal, key.Field(TestEvent{OrderID: "default"}))
 

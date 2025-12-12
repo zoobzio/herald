@@ -1,12 +1,11 @@
-module github.com/zoobzio/herald
+module github.com/zoobzio/herald/pkg/jetstream
 
 go 1.24.0
 
 require (
 	github.com/nats-io/nats-server/v2 v2.12.2
 	github.com/nats-io/nats.go v1.47.0
-	github.com/zoobzio/capitan v0.0.9
-	github.com/zoobzio/pipz v0.0.19
+	github.com/zoobzio/herald v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -17,8 +16,12 @@ require (
 	github.com/nats-io/jwt/v2 v2.8.0 // indirect
 	github.com/nats-io/nkeys v0.4.11 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
+	github.com/zoobzio/capitan v0.0.9 // indirect
 	github.com/zoobzio/clockz v0.0.2 // indirect
+	github.com/zoobzio/pipz v0.0.19 // indirect
 	golang.org/x/crypto v0.43.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 )
+
+replace github.com/zoobzio/herald => ../../

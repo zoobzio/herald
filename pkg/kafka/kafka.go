@@ -132,7 +132,8 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 				Data:     msg.Value,
 				Metadata: metadata,
 				Ack: func() error {
-					return p.reader.CommitMessages(ctx, kafkaMsg)
+					// Use Background context: ack should succeed even if subscription context is cancelled
+					return p.reader.CommitMessages(context.Background(), kafkaMsg)
 				},
 				Nack: func() error {
 					// Kafka: don't commit = message will be redelivered on next consumer
@@ -149,6 +150,15 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 	}()
 
 	return out
+}
+
+// Ping verifies Kafka connectivity by checking if writer/reader are configured.
+// Note: kafka-go doesn't expose a direct ping; this validates configuration.
+func (p *Provider) Ping(ctx context.Context) error {
+	if p.writer == nil && p.reader == nil {
+		return herald.ErrNoWriter
+	}
+	return nil
 }
 
 // Close releases Kafka resources.

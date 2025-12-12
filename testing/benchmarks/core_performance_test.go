@@ -33,6 +33,10 @@ func (*mockProvider) Subscribe(_ context.Context) <-chan herald.Result[herald.Me
 	return ch
 }
 
+func (*mockProvider) Ping(_ context.Context) error {
+	return nil
+}
+
 func (*mockProvider) Close() error {
 	return nil
 }
@@ -49,7 +53,7 @@ func BenchmarkPublisher(b *testing.B) {
 
 	pub := herald.NewPublisher(provider, sig, key, nil,
 		herald.WithPublisherCapitan[benchMessage](c))
-	pub.Start(context.Background())
+	pub.Start()
 	defer pub.Close()
 
 	msg := benchMessage{
@@ -86,7 +90,7 @@ func BenchmarkPublisher_WithRetry(b *testing.B) {
 			herald.WithRetry[benchMessage](3),
 		},
 		herald.WithPublisherCapitan[benchMessage](c))
-	pub.Start(context.Background())
+	pub.Start()
 	defer pub.Close()
 
 	msg := benchMessage{ID: "bench-001", Value: "test"}
@@ -118,7 +122,7 @@ func BenchmarkPublisher_WithTimeout(b *testing.B) {
 			herald.WithTimeout[benchMessage](5 * time.Second),
 		},
 		herald.WithPublisherCapitan[benchMessage](c))
-	pub.Start(context.Background())
+	pub.Start()
 	defer pub.Close()
 
 	msg := benchMessage{ID: "bench-001", Value: "test"}
@@ -284,7 +288,7 @@ func BenchmarkPublisher_MessageSizes(b *testing.B) {
 
 			pub := herald.NewPublisher(provider, sig, key, nil,
 				herald.WithPublisherCapitan[[]byte](c))
-			pub.Start(context.Background())
+			pub.Start()
 			defer pub.Close()
 
 			data := make([]byte, sz.size)
@@ -318,7 +322,7 @@ func BenchmarkPublisher_ConcurrentEmit(b *testing.B) {
 
 	pub := herald.NewPublisher(provider, sig, key, nil,
 		herald.WithPublisherCapitan[benchMessage](c))
-	pub.Start(context.Background())
+	pub.Start()
 	defer pub.Close()
 
 	msg := benchMessage{ID: "bench-001", Value: "test"}

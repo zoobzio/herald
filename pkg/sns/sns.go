@@ -73,6 +73,17 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 	return out
 }
 
+// Ping verifies SNS connectivity by getting topic attributes.
+func (p *Provider) Ping(ctx context.Context) error {
+	if p.client == nil {
+		return herald.ErrNoWriter
+	}
+	_, err := p.client.GetTopicAttributes(ctx, &sns.GetTopicAttributesInput{
+		TopicArn: aws.String(p.topicARN),
+	})
+	return err
+}
+
 // Close releases SNS resources.
 func (p *Provider) Close() error {
 	return nil

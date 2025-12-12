@@ -54,7 +54,7 @@ func main() {
 
     // Publish capitan events to SNS
     pub := herald.NewPublisher(provider, orderCreated, orderKey, nil)
-    pub.Start(ctx)
+    pub.Start()
 
     // Emit event - automatically published to SNS
     capitan.Emit(ctx, orderCreated, orderKey.Field(Order{

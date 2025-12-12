@@ -99,7 +99,7 @@ func TestPublisher_DefaultCodecIsJSON(t *testing.T) {
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
 	pub := NewPublisher(provider, signal, key, nil, WithPublisherCapitan[TestEvent](c))
-	pub.Start(context.Background())
+	pub.Start()
 
 	c.Emit(context.Background(), signal, key.Field(TestEvent{
 		OrderID: "ORD-789",
@@ -139,7 +139,7 @@ func TestPublisher_CustomCodec(t *testing.T) {
 		WithPublisherCapitan[TestEvent](c),
 		WithPublisherCodec[TestEvent](codec),
 	)
-	pub.Start(context.Background())
+	pub.Start()
 
 	c.Emit(context.Background(), signal, key.Field(TestEvent{
 		OrderID: "ORD-CUSTOM",
@@ -173,7 +173,7 @@ func TestPublisher_ContentTypeInMetadata(t *testing.T) {
 		WithPublisherCapitan[TestEvent](c),
 		WithPublisherCodec[TestEvent](codec),
 	)
-	pub.Start(context.Background())
+	pub.Start()
 
 	c.Emit(context.Background(), signal, key.Field(TestEvent{
 		OrderID: "ORD-CT",
@@ -214,7 +214,7 @@ func TestPublisher_ContentTypeNotOverwritten(t *testing.T) {
 		WithPublisherCapitan[TestEvent](c),
 		WithPublisherCodec[TestEvent](codec),
 	)
-	pub.Start(context.Background())
+	pub.Start()
 
 	// Emit with pre-set Content-Type
 	ctx := ContextWithMetadata(context.Background(), Metadata{
@@ -265,8 +265,7 @@ func TestSubscriber_DefaultCodecIsJSON(t *testing.T) {
 	})
 
 	sub := NewSubscriber(provider, signal, key, nil, WithSubscriberCapitan[TestEvent](c))
-	ctx, cancel := context.WithCancel(context.Background())
-	sub.Start(ctx)
+	sub.Start()
 
 	// Send JSON-encoded message
 	event := TestEvent{OrderID: "SUB-DEFAULT", Total: 100.00}
@@ -288,7 +287,6 @@ func TestSubscriber_DefaultCodecIsJSON(t *testing.T) {
 		t.Fatal("timeout waiting for event")
 	}
 
-	cancel()
 	sub.Close()
 
 	if received.OrderID != "SUB-DEFAULT" {
@@ -319,8 +317,7 @@ func TestSubscriber_CustomCodec(t *testing.T) {
 		WithSubscriberCapitan[TestEvent](c),
 		WithSubscriberCodec[TestEvent](codec),
 	)
-	ctx, cancel := context.WithCancel(context.Background())
-	sub.Start(ctx)
+	sub.Start()
 
 	event := TestEvent{OrderID: "SUB-CUSTOM", Total: 200.00}
 	data, err := json.Marshal(event)
@@ -341,7 +338,6 @@ func TestSubscriber_CustomCodec(t *testing.T) {
 		t.Fatal("timeout waiting for event")
 	}
 
-	cancel()
 	sub.Close()
 
 	if !codec.unmarshalCalled.Load() {
@@ -368,7 +364,7 @@ func TestCodec_RoundTrip(t *testing.T) {
 		WithPublisherCapitan[TestEvent](c),
 		WithPublisherCodec[TestEvent](codec),
 	)
-	pub.Start(context.Background())
+	pub.Start()
 
 	// Publish event
 	c.Emit(context.Background(), pubSignal, key.Field(TestEvent{
@@ -405,8 +401,7 @@ func TestCodec_RoundTrip(t *testing.T) {
 		WithSubscriberCapitan[TestEvent](c2),
 		WithSubscriberCodec[TestEvent](codec),
 	)
-	ctx, cancel := context.WithCancel(context.Background())
-	sub.Start(ctx)
+	sub.Start()
 
 	// Send the published data to subscriber
 	subCh <- NewSuccess(newTestMessage(published[0]))
@@ -423,7 +418,6 @@ func TestCodec_RoundTrip(t *testing.T) {
 		t.Fatal("timeout waiting for event")
 	}
 
-	cancel()
 	sub.Close()
 
 	if received.OrderID != "ROUNDTRIP" {
@@ -469,8 +463,7 @@ func TestSubscriber_CodecMismatchEmitsError(t *testing.T) {
 		WithSubscriberCapitan[TestEvent](c),
 		WithSubscriberCodec[TestEvent](failCodec),
 	)
-	ctx, cancel := context.WithCancel(context.Background())
-	sub.Start(ctx)
+	sub.Start()
 
 	// Send valid JSON that the codec will reject
 	data, err := json.Marshal(TestEvent{OrderID: "MISMATCH", Total: 1.0})
@@ -482,7 +475,6 @@ func TestSubscriber_CodecMismatchEmitsError(t *testing.T) {
 	// Give time for processing
 	time.Sleep(50 * time.Millisecond)
 
-	cancel()
 	sub.Close()
 
 	if !errorReceived.Load() {
@@ -509,7 +501,7 @@ func TestPublisher_NilCodecDefaultsToJSON(t *testing.T) {
 		WithPublisherCapitan[TestEvent](c),
 		WithPublisherCodec[TestEvent](nil),
 	)
-	pub.Start(context.Background())
+	pub.Start()
 
 	c.Emit(context.Background(), signal, key.Field(TestEvent{
 		OrderID: "NIL-CODEC",
@@ -562,8 +554,7 @@ func TestSubscriber_NilCodecDefaultsToJSON(t *testing.T) {
 		WithSubscriberCapitan[TestEvent](c),
 		WithSubscriberCodec[TestEvent](nil),
 	)
-	ctx, cancel := context.WithCancel(context.Background())
-	sub.Start(ctx)
+	sub.Start()
 
 	// Send JSON-encoded message
 	event := TestEvent{OrderID: "NIL-SUB", Total: 77.00}
@@ -585,7 +576,6 @@ func TestSubscriber_NilCodecDefaultsToJSON(t *testing.T) {
 		t.Fatal("timeout waiting for event")
 	}
 
-	cancel()
 	sub.Close()
 
 	if received.OrderID != "NIL-SUB" {
@@ -622,7 +612,7 @@ func TestPublisher_MarshalErrorEmitsError(t *testing.T) {
 		WithPublisherCapitan[TestEvent](c),
 		WithPublisherCodec[TestEvent](failCodec),
 	)
-	pub.Start(context.Background())
+	pub.Start()
 
 	c.Emit(context.Background(), signal, key.Field(TestEvent{
 		OrderID: "FAIL",

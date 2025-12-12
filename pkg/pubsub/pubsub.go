@@ -121,6 +121,23 @@ func (p *Provider) Subscribe(ctx context.Context) <-chan herald.Result[herald.Me
 	return out
 }
 
+// Ping verifies Pub/Sub connectivity by checking topic existence.
+func (p *Provider) Ping(ctx context.Context) error {
+	if p.topic == nil && p.sub == nil {
+		return herald.ErrNoWriter
+	}
+	if p.topic != nil {
+		exists, err := p.topic.Exists(ctx)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return herald.ErrNoWriter
+		}
+	}
+	return nil
+}
+
 // Close releases Pub/Sub resources.
 func (p *Provider) Close() error {
 	if p.topic != nil {

@@ -2,6 +2,7 @@ package herald
 
 import (
 	"context"
+	"sync"
 
 	"github.com/zoobzio/capitan"
 	"github.com/zoobzio/pipz"
@@ -17,6 +18,7 @@ type Publisher[T any] struct {
 	codec    Codec
 	pipeline pipz.Chainable[T]
 	observer *capitan.Observer
+	inflight sync.WaitGroup
 }
 
 // PublisherOption configures a Publisher.
@@ -83,21 +85,12 @@ func newPublishTerminal[T any](provider Provider, codec Codec) pipz.Chainable[T]
 	})
 }
 
-// copyMetadata returns a shallow copy of the metadata, or a new map if nil.
-func copyMetadata(m Metadata) Metadata {
-	if m == nil {
-		return make(Metadata)
-	}
-	copied := make(Metadata, len(m))
-	for k, v := range m {
-		copied[k] = v
-	}
-	return copied
-}
-
 // Start begins observing the signal and publishing to the broker.
-func (p *Publisher[T]) Start(_ context.Context) {
+func (p *Publisher[T]) Start() {
 	callback := func(ctx context.Context, e *capitan.Event) {
+		p.inflight.Add(1)
+		defer p.inflight.Done()
+
 		value, ok := p.key.From(e)
 		if !ok {
 			return
@@ -132,11 +125,12 @@ func (p *Publisher[T]) emitError(ctx context.Context, errMsg string) {
 	}
 }
 
-// Close stops the publisher and releases resources.
+// Close stops the publisher, waits for in-flight publishes, and releases resources.
 func (p *Publisher[T]) Close() error {
 	if p.observer != nil {
 		p.observer.Close()
 	}
+	p.inflight.Wait()
 	if p.pipeline != nil {
 		return p.pipeline.Close()
 	}
