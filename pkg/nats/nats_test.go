@@ -21,7 +21,7 @@ func startTestServer(t *testing.T) (*server.Server, *nats.Conn) {
 		t.Fatalf("failed to create server: %v", err)
 	}
 
-	go s.Start(context.Background())
+	go s.Start()
 	if !s.ReadyForConnections(5 * time.Second) {
 		t.Fatal("server not ready")
 	}

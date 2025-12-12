@@ -71,7 +71,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        provider: [sqs, sns, pubsub, firestore, kafka, redis, amqp, nats, bolt, sql, io]
+        provider: [sqs, sns, pubsub, firestore, kafka, redis, amqp, nats, jetstream, bolt, io]
     steps:
     - uses: actions/checkout@v4
 
