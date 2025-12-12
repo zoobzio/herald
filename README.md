@@ -35,7 +35,7 @@ go get github.com/zoobzio/herald
 
 Requires Go 1.23+.
 
-## Quick Start
+## Publishing
 
 ```go
 package main
