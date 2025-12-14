@@ -56,7 +56,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	github.com/zoobzio/capitan v0.0.9 // indirect
+	github.com/zoobzio/capitan v0.0.12 // indirect
 	github.com/zoobzio/clockz v0.0.2 // indirect
 	github.com/zoobzio/pipz v0.0.19 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect

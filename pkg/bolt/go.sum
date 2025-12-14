@@ -4,8 +4,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/zoobzio/capitan v0.0.9 h1:4g5qAO4wo8VS7hjyc1rSSyzL1ibSbG7XDh14YyG3x30=
-github.com/zoobzio/capitan v0.0.9/go.mod h1:/OwNDIB1CHxwSzsF4e48B2+2e/IMIvTb0ZMgVeNyYig=
+github.com/zoobzio/capitan v0.0.12 h1:Ap6/76k7PPt/FmY98Jqi0JyAKguxzpYeUi36R8gawyc=
+github.com/zoobzio/capitan v0.0.12/go.mod h1:/OwNDIB1CHxwSzsF4e48B2+2e/IMIvTb0ZMgVeNyYig=
 github.com/zoobzio/clockz v0.0.2 h1:72E53zhvh8EyxDPEy41CZOYSpSlmt8S+QNdFMVPA1xQ=
 github.com/zoobzio/clockz v0.0.2/go.mod h1:noq8vP/zaqBtSlAQ8Yp9im3afEhFZxYLmxZX53ZilLc=
 github.com/zoobzio/pipz v0.0.19 h1:9ZWDgrIG9CE9BYlNIZXpUzcya5P2Nm1My6VJXhKX2vU=

@@ -16,7 +16,7 @@ require (
 	github.com/nats-io/jwt/v2 v2.8.0 // indirect
 	github.com/nats-io/nkeys v0.4.11 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
-	github.com/zoobzio/capitan v0.0.9 // indirect
+	github.com/zoobzio/capitan v0.0.12 // indirect
 	github.com/zoobzio/clockz v0.0.2 // indirect
 	github.com/zoobzio/pipz v0.0.19 // indirect
 	golang.org/x/crypto v0.43.0 // indirect

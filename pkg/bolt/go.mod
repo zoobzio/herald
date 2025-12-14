@@ -9,7 +9,7 @@ require (
 
 require (
 	github.com/stretchr/testify v1.11.1 // indirect
-	github.com/zoobzio/capitan v0.0.9 // indirect
+	github.com/zoobzio/capitan v0.0.12 // indirect
 	github.com/zoobzio/clockz v0.0.2 // indirect
 	github.com/zoobzio/pipz v0.0.19 // indirect
 	golang.org/x/sync v0.17.0 // indirect

@@ -170,8 +170,8 @@ github.com/tklauser/numcpus v0.7.0 h1:yjuerZP127QG9m5Zh/mSO4wqurYil27tHrqwRoRjpr
 github.com/tklauser/numcpus v0.7.0/go.mod h1:bb6dMVcj8A42tSE7i32fsIUCbQNllK5iDguyOZRUzAY=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
-github.com/zoobzio/capitan v0.0.9 h1:4g5qAO4wo8VS7hjyc1rSSyzL1ibSbG7XDh14YyG3x30=
-github.com/zoobzio/capitan v0.0.9/go.mod h1:/OwNDIB1CHxwSzsF4e48B2+2e/IMIvTb0ZMgVeNyYig=
+github.com/zoobzio/capitan v0.0.12 h1:Ap6/76k7PPt/FmY98Jqi0JyAKguxzpYeUi36R8gawyc=
+github.com/zoobzio/capitan v0.0.12/go.mod h1:/OwNDIB1CHxwSzsF4e48B2+2e/IMIvTb0ZMgVeNyYig=
 github.com/zoobzio/clockz v0.0.2 h1:72E53zhvh8EyxDPEy41CZOYSpSlmt8S+QNdFMVPA1xQ=
 github.com/zoobzio/clockz v0.0.2/go.mod h1:noq8vP/zaqBtSlAQ8Yp9im3afEhFZxYLmxZX53ZilLc=
 github.com/zoobzio/pipz v0.0.19 h1:9ZWDgrIG9CE9BYlNIZXpUzcya5P2Nm1My6VJXhKX2vU=
