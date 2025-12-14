@@ -16,7 +16,7 @@ type Subscriber[T any] struct {
 	key      capitan.GenericKey[T]
 	capitan  *capitan.Capitan
 	codec    Codec
-	pipeline pipz.Chainable[T]
+	pipeline pipz.Chainable[*Envelope[T]]
 	cancel   context.CancelFunc
 	wg       sync.WaitGroup
 }
@@ -64,7 +64,7 @@ func NewSubscriber[T any](provider Provider, signal capitan.Signal, key capitan.
 	}
 
 	// Build pipeline: start with terminal, wrap with options
-	var pipeline pipz.Chainable[T] = newSubscribeTerminal[T](signal, key, s)
+	var pipeline pipz.Chainable[*Envelope[T]] = newSubscribeTerminal[T](signal, key, s)
 	for _, opt := range pipelineOpts {
 		pipeline = opt(pipeline)
 	}
@@ -74,13 +74,14 @@ func NewSubscriber[T any](provider Provider, signal capitan.Signal, key capitan.
 }
 
 // newSubscribeTerminal creates the terminal operation that emits to Capitan.
-func newSubscribeTerminal[T any](signal capitan.Signal, key capitan.GenericKey[T], s *Subscriber[T]) pipz.Chainable[T] {
-	return pipz.Effect("emit", func(ctx context.Context, value T) error {
-		field := key.Field(value)
+func newSubscribeTerminal[T any](signal capitan.Signal, key capitan.GenericKey[T], s *Subscriber[T]) pipz.Chainable[*Envelope[T]] {
+	return pipz.Effect("emit", func(ctx context.Context, env *Envelope[T]) error {
+		valueField := key.Field(env.Value)
+		metaField := MetadataKey.Field(env.Metadata)
 		if s.capitan != nil {
-			s.capitan.Emit(ctx, signal, field)
+			s.capitan.Emit(ctx, signal, valueField, metaField)
 		} else {
-			capitan.Emit(ctx, signal, field)
+			capitan.Emit(ctx, signal, valueField, metaField)
 		}
 		return nil
 	})
@@ -116,8 +117,6 @@ func (s *Subscriber[T]) Start(ctx context.Context) {
 }
 
 // process deserializes the message, runs through the pipeline, and acks/nacks.
-// Note: Message metadata is attached to the context after unmarshaling, making it
-// available to pipeline stages and Capitan handlers but not during deserialization.
 func (s *Subscriber[T]) process(ctx context.Context, msg Message) {
 	var value T
 	if err := s.codec.Unmarshal(msg.Data, &value); err != nil {
@@ -131,16 +130,14 @@ func (s *Subscriber[T]) process(ctx context.Context, msg Message) {
 		return
 	}
 
-	// Attach message metadata to context for downstream processing.
-	// This occurs after unmarshal so metadata is available to pipeline stages
-	// and Capitan handlers, but not during deserialization itself.
-	// We copy the metadata to prevent downstream mutations from affecting the original message.
-	if msg.Metadata != nil {
-		ctx = ContextWithMetadata(ctx, copyMetadata(msg.Metadata))
+	// Wrap value in envelope with metadata from broker
+	env := &Envelope[T]{
+		Value:    value,
+		Metadata: copyMetadata(msg.Metadata),
 	}
 
 	// Process through pipeline (includes emit)
-	_, err := s.pipeline.Process(ctx, value)
+	_, err := s.pipeline.Process(ctx, env)
 
 	if err != nil {
 		// Pipeline failed - nack for redelivery

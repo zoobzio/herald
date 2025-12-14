@@ -504,12 +504,18 @@ func TestSubscriber_MessageWithMetadata(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	c.Hook(signal, func(ctx context.Context, _ *capitan.Event) {
-		receivedMetadata = MetadataFromContext(ctx)
-		wg.Done()
-	})
+	// Middleware that captures metadata from envelope
+	opts := []Option[TestEvent]{
+		WithMiddleware(
+			UseEffect[TestEvent]("capture-metadata", func(_ context.Context, env *Envelope[TestEvent]) error {
+				receivedMetadata = env.Metadata
+				wg.Done()
+				return nil
+			}),
+		),
+	}
 
-	sub := NewSubscriber(provider, signal, key, nil, WithSubscriberCapitan[TestEvent](c))
+	sub := NewSubscriber(provider, signal, key, opts, WithSubscriberCapitan[TestEvent](c))
 	sub.Start(context.Background())
 
 	// Send message with metadata
@@ -544,7 +550,7 @@ func TestSubscriber_MessageWithMetadata(t *testing.T) {
 	sub.Close()
 
 	if receivedMetadata == nil {
-		t.Fatal("expected metadata to be propagated to handler")
+		t.Fatal("expected metadata to be accessible via envelope")
 	}
 	if receivedMetadata["trace-id"] != "abc123" {
 		t.Errorf("expected trace-id 'abc123', got %q", receivedMetadata["trace-id"])
@@ -736,9 +742,11 @@ func TestSubscriber_NilNackOnPipelineError(t *testing.T) {
 
 	// Pipeline that always fails
 	failingPipeline := []Option[TestEvent]{
-		WithApply("fail", func(_ context.Context, _ TestEvent) (TestEvent, error) {
-			return TestEvent{}, errors.New("pipeline failed")
-		}),
+		WithMiddleware(
+			UseApply[TestEvent]("fail", func(_ context.Context, _ *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+				return nil, errors.New("pipeline failed")
+			}),
+		),
 	}
 
 	sub := NewSubscriber(provider, signal, key, failingPipeline, WithSubscriberCapitan[TestEvent](c))
@@ -888,9 +896,11 @@ func TestSubscriber_NackOnPipelineError(t *testing.T) {
 
 	// Pipeline that always fails
 	failingPipeline := []Option[TestEvent]{
-		WithApply("fail", func(_ context.Context, _ TestEvent) (TestEvent, error) {
-			return TestEvent{}, errors.New("pipeline failed")
-		}),
+		WithMiddleware(
+			UseApply[TestEvent]("fail", func(_ context.Context, _ *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+				return nil, errors.New("pipeline failed")
+			}),
+		),
 	}
 
 	sub := NewSubscriber(provider, signal, key, failingPipeline, WithSubscriberCapitan[TestEvent](c))
@@ -942,9 +952,11 @@ func TestSubscriber_NackErrorOnPipelineError(t *testing.T) {
 
 	// Pipeline that always fails
 	failingPipeline := []Option[TestEvent]{
-		WithApply("fail", func(_ context.Context, _ TestEvent) (TestEvent, error) {
-			return TestEvent{}, errors.New("pipeline failed")
-		}),
+		WithMiddleware(
+			UseApply[TestEvent]("fail", func(_ context.Context, _ *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+				return nil, errors.New("pipeline failed")
+			}),
+		),
 	}
 
 	sub := NewSubscriber(provider, signal, key, failingPipeline, WithSubscriberCapitan[TestEvent](c))

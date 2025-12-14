@@ -111,7 +111,7 @@ Messages are automatically deserialized, emitted as capitan events, and acknowle
 
 - **Type-safe** — Generic publishers and subscribers with compile-time checking
 - **Bidirectional** — Publish to brokers or subscribe from brokers
-- **12 providers** — Kafka, NATS, JetStream, Pub/Sub, Redis, SQS, RabbitMQ, SNS, SQL, BoltDB, Firestore, io
+- **11 providers** — Kafka, NATS, JetStream, Pub/Sub, Redis, SQS, RabbitMQ, SNS, BoltDB, Firestore, io
 - **Reliable** — Pipeline middleware for retry, backoff, timeout, circuit breaker, rate limiting
 - **Observable** — Errors flow through [capitan](https://github.com/zoobzio/capitan)
 
@@ -127,37 +127,38 @@ Messages are automatically deserialized, emitted as capitan events, and acknowle
 | AWS SQS | [`pkg/sqs`](pkg/sqs) | AWS managed queues |
 | RabbitMQ/AMQP | [`pkg/amqp`](pkg/amqp) | Traditional message broker |
 | AWS SNS | [`pkg/sns`](pkg/sns) | Pub/sub fanout |
-| SQL | [`pkg/sql`](pkg/sql) | Database-backed queues |
 | BoltDB | [`pkg/bolt`](pkg/bolt) | Embedded local queues |
 | Firestore | [`pkg/firestore`](pkg/firestore) | Firebase/GCP document store |
 | io | [`pkg/io`](pkg/io) | Testing with io.Reader/Writer |
 
 ## Processing Hooks
 
-Add processing steps via pipz primitives:
+Add processing steps via middleware processors:
 
 ```go
 pub := herald.NewPublisher(provider, signal, key, []herald.Option[Order]{
-    herald.WithApply[Order]("validate", func(ctx context.Context, order Order) (Order, error) {
-        if order.Total < 0 {
-            return order, errors.New("invalid total")
-        }
-        return order, nil
-    }),
-    herald.WithEffect[Order]("log", func(ctx context.Context, order Order) error {
-        log.Printf("order %s", order.ID)
-        return nil
-    }),
-    herald.WithTransform[Order]("enrich", func(ctx context.Context, order Order) Order {
-        order.ProcessedAt = time.Now()
-        return order
-    }),
+    herald.WithMiddleware(
+        herald.UseApply[Order]("validate", func(ctx context.Context, env *herald.Envelope[Order]) (*herald.Envelope[Order], error) {
+            if env.Value.Total < 0 {
+                return env, errors.New("invalid total")
+            }
+            return env, nil
+        }),
+        herald.UseEffect[Order]("log", func(ctx context.Context, env *herald.Envelope[Order]) error {
+            log.Printf("order %s", env.Value.ID)
+            return nil
+        }),
+        herald.UseTransform[Order]("enrich", func(ctx context.Context, env *herald.Envelope[Order]) *herald.Envelope[Order] {
+            env.Value.ProcessedAt = time.Now()
+            return env
+        }),
+    ),
 })
 ```
 
-- `WithApply` — Transform with possible error
-- `WithEffect` — Side effect, no transform
-- `WithTransform` — Pure transform, cannot fail
+- `UseApply` — Transform envelope with possible error
+- `UseEffect` — Side effect, envelope passes through unchanged
+- `UseTransform` — Pure transform, cannot fail
 
 ## Pipeline Options
 

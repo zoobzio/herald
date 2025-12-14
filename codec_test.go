@@ -202,7 +202,7 @@ func TestPublisher_ContentTypeInMetadata(t *testing.T) {
 
 func TestPublisher_ContentTypeNotOverwritten(t *testing.T) {
 	provider := &mockProvider{}
-	c := capitan.New()
+	c := capitan.New(capitan.WithSyncMode())
 	defer c.Shutdown()
 
 	signal := capitan.NewSignal("test.codec.ct.preserve", "Test codec content type preserve")
@@ -210,17 +210,23 @@ func TestPublisher_ContentTypeNotOverwritten(t *testing.T) {
 
 	codec := &mockCodec{contentType: "application/x-custom"}
 
-	pub := NewPublisher(provider, signal, key, nil,
+	// Middleware that pre-sets Content-Type
+	opts := []Option[TestEvent]{
+		WithMiddleware(
+			UseTransform[TestEvent]("set-ct", func(_ context.Context, env *Envelope[TestEvent]) *Envelope[TestEvent] {
+				env.Metadata["Content-Type"] = "application/x-preset"
+				return env
+			}),
+		),
+	}
+
+	pub := NewPublisher(provider, signal, key, opts,
 		WithPublisherCapitan[TestEvent](c),
 		WithPublisherCodec[TestEvent](codec),
 	)
 	pub.Start()
 
-	// Emit with pre-set Content-Type
-	ctx := ContextWithMetadata(context.Background(), Metadata{
-		"Content-Type": "application/x-preset",
-	})
-	c.Emit(ctx, signal, key.Field(TestEvent{
+	c.Emit(context.Background(), signal, key.Field(TestEvent{
 		OrderID: "ORD-PRESET",
 		Total:   30.00,
 	}))

@@ -31,21 +31,16 @@ var (
 // Used for correlation IDs, tracing context, content types, and routing hints.
 type Metadata map[string]string
 
-// metadataKey is the context key for metadata.
-type metadataKey struct{}
+// Envelope wraps a value with metadata for pipeline processing.
+// Provides type-safe access to message headers in middleware.
+type Envelope[T any] struct {
+	// Value is the typed message payload.
+	Value T
 
-// ContextWithMetadata returns a new context with the given metadata attached.
-func ContextWithMetadata(ctx context.Context, m Metadata) context.Context {
-	return context.WithValue(ctx, metadataKey{}, m)
-}
-
-// MetadataFromContext extracts metadata from a context.
-// Returns nil if no metadata is present.
-func MetadataFromContext(ctx context.Context) Metadata {
-	if m, ok := ctx.Value(metadataKey{}).(Metadata); ok {
-		return m
-	}
-	return nil
+	// Metadata contains message headers/attributes.
+	// For publishers: set headers to send with the message.
+	// For subscribers: read headers received from the broker.
+	Metadata Metadata
 }
 
 // Message represents a message received from a broker with acknowledgment controls.
@@ -101,6 +96,10 @@ var (
 
 	// ErrorKey extracts Error from events on ErrorSignal.
 	ErrorKey = capitan.NewKey[Error]("error", "herald.Error")
+
+	// MetadataKey extracts Metadata from events emitted by subscribers.
+	// Use this in Capitan hooks to access broker message headers.
+	MetadataKey = capitan.NewKey[Metadata]("metadata", "herald.Metadata")
 )
 
 // Result represents either a successful value or an error.

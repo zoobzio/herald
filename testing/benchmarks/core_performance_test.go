@@ -182,41 +182,6 @@ func BenchmarkJSONCodec_Unmarshal(b *testing.B) {
 	}
 }
 
-// BenchmarkMetadata measures metadata operations.
-func BenchmarkMetadata(b *testing.B) {
-	b.Run("ContextWithMetadata", func(b *testing.B) {
-		ctx := context.Background()
-		meta := herald.Metadata{
-			"correlation-id": "abc-123",
-			"trace-id":       "xyz-789",
-			"Content-Type":   "application/json",
-		}
-
-		b.ResetTimer()
-		b.ReportAllocs()
-
-		for i := 0; i < b.N; i++ {
-			_ = herald.ContextWithMetadata(ctx, meta)
-		}
-	})
-
-	b.Run("MetadataFromContext", func(b *testing.B) {
-		meta := herald.Metadata{
-			"correlation-id": "abc-123",
-			"trace-id":       "xyz-789",
-			"Content-Type":   "application/json",
-		}
-		ctx := herald.ContextWithMetadata(context.Background(), meta)
-
-		b.ResetTimer()
-		b.ReportAllocs()
-
-		for i := 0; i < b.N; i++ {
-			_ = herald.MetadataFromContext(ctx)
-		}
-	})
-}
-
 // BenchmarkResult measures Result type operations.
 func BenchmarkResult(b *testing.B) {
 	b.Run("NewSuccess", func(b *testing.B) {

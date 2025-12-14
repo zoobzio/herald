@@ -9,7 +9,6 @@ Benchmarks fundamental herald operations:
 - **Publisher Throughput**: Emit-to-publish latency
 - **Pipeline Options**: Retry, timeout overhead
 - **JSON Codec**: Marshal/unmarshal performance
-- **Metadata Operations**: Context attachment/extraction
 - **Result Type**: Success/error creation overhead
 - **Message Sizes**: Performance across payload sizes
 - **Concurrent Emit**: Parallel emission scalability
@@ -60,14 +59,12 @@ go tool pprof mem.prof
 Herald aims for minimal overhead over raw broker operations:
 - **Publisher emit**: < 1µs/op overhead
 - **JSON marshal**: Comparable to stdlib encoding/json
-- **Metadata context**: < 100ns/op
 - **Result operations**: < 10ns/op, 0 allocs
 
 ### Zero-Allocation Paths
 These operations should have zero allocations:
 - Result.IsSuccess() / IsError()
 - Result.Value() / Error()
-- MetadataFromContext (returns existing map)
 
 ## Interpreting Results
 

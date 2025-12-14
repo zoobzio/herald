@@ -16,7 +16,7 @@ type Publisher[T any] struct {
 	key      capitan.GenericKey[T]
 	capitan  *capitan.Capitan
 	codec    Codec
-	pipeline pipz.Chainable[T]
+	pipeline pipz.Chainable[*Envelope[T]]
 	observer *capitan.Observer
 	inflight sync.WaitGroup
 }
@@ -64,7 +64,7 @@ func NewPublisher[T any](provider Provider, signal capitan.Signal, key capitan.G
 	}
 
 	// Build pipeline: start with terminal, wrap with options
-	var pipeline pipz.Chainable[T] = newPublishTerminal[T](provider, p.codec)
+	var pipeline pipz.Chainable[*Envelope[T]] = newPublishTerminal[T](provider, p.codec)
 	for _, opt := range pipelineOpts {
 		pipeline = opt(pipeline)
 	}
@@ -74,20 +74,19 @@ func NewPublisher[T any](provider Provider, signal capitan.Signal, key capitan.G
 }
 
 // newPublishTerminal creates the terminal operation that marshals and publishes to the broker.
-func newPublishTerminal[T any](provider Provider, codec Codec) pipz.Chainable[T] {
-	return pipz.Apply("publish", func(ctx context.Context, value T) (T, error) {
-		data, err := codec.Marshal(value)
+func newPublishTerminal[T any](provider Provider, codec Codec) pipz.Chainable[*Envelope[T]] {
+	return pipz.Apply("publish", func(ctx context.Context, env *Envelope[T]) (*Envelope[T], error) {
+		data, err := codec.Marshal(env.Value)
 		if err != nil {
-			return value, err
+			return env, err
 		}
-		// Build metadata: copy from context to avoid mutation, or create new
-		metadata := copyMetadata(MetadataFromContext(ctx))
-		// Set Content-Type if not already present
+		// Build metadata from envelope, set Content-Type if not present
+		metadata := copyMetadata(env.Metadata)
 		if _, exists := metadata["Content-Type"]; !exists {
 			metadata["Content-Type"] = codec.ContentType()
 		}
 		err = provider.Publish(ctx, data, metadata)
-		return value, err
+		return env, err
 	})
 }
 
@@ -102,8 +101,14 @@ func (p *Publisher[T]) Start() {
 			return
 		}
 
+		// Wrap value in envelope with empty metadata
+		env := &Envelope[T]{
+			Value:    value,
+			Metadata: make(Metadata),
+		}
+
 		// Process through pipeline (includes publish)
-		_, err := p.pipeline.Process(ctx, value)
+		_, err := p.pipeline.Process(ctx, env)
 		if err != nil {
 			p.emitError(ctx, err.Error())
 		}
