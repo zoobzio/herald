@@ -10,6 +10,30 @@ import (
 	"time"
 
 	"github.com/zoobzio/capitan"
+	"github.com/zoobzio/pipz"
+)
+
+// Test identities for processing tests.
+var (
+	testAddPrefixID    = pipz.NewIdentity("test:add-prefix", "Test add prefix")
+	testValidateID     = pipz.NewIdentity("test:validate", "Test validate")
+	testLogID          = pipz.NewIdentity("test:log", "Test log effect")
+	testCheckID        = pipz.NewIdentity("test:check", "Test check effect")
+	testUppercaseID    = pipz.NewIdentity("test:uppercase", "Test uppercase transform")
+	testAddSuffixID    = pipz.NewIdentity("test:add-suffix", "Test add suffix")
+	testCountID        = pipz.NewIdentity("test:count", "Test count")
+	testFirstID        = pipz.NewIdentity("test:first", "Test first")
+	testSecondID       = pipz.NewIdentity("test:second", "Test second")
+	testMutateID       = pipz.NewIdentity("test:add-prefix", "Test mutate add prefix")
+	testEnrichID       = pipz.NewIdentity("test:enrich", "Test enrich")
+	testHighValueID    = pipz.NewIdentity("test:high-value", "Test high value filter")
+	testFlakyID        = pipz.NewIdentity("test:flaky", "Test flaky processor")
+	testSetHeadersID   = pipz.NewIdentity("test:set-headers", "Test set headers")
+	testReadHeadersID  = pipz.NewIdentity("test:read-headers", "Test read headers")
+	testSlowID         = pipz.NewIdentity("test:slow", "Test slow processor")
+	testPrimaryID      = pipz.NewIdentity("test:primary", "Test primary")
+	testFallbackProcID = pipz.NewIdentity("test:fallback", "Test fallback processor")
+	testProcessID      = pipz.NewIdentity("test:process", "Test process effect")
 )
 
 func TestPublisher_UseApply_TransformsValue(t *testing.T) {
@@ -29,7 +53,7 @@ func TestPublisher_UseApply_TransformsValue(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseApply[TestEvent]("add-prefix", func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+			UseApply[TestEvent](testAddPrefixID, func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 				env.Value.OrderID = "PREFIX-" + env.Value.OrderID
 				return env, nil
 			}),
@@ -76,7 +100,7 @@ func TestPublisher_UseApply_ErrorAborts(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseApply[TestEvent]("validate", func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+			UseApply[TestEvent](testValidateID, func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 				if env.Value.Total < 0 {
 					return env, errors.New("invalid total")
 				}
@@ -120,7 +144,7 @@ func TestPublisher_UseEffect_SideEffect(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseEffect[TestEvent]("log", func(_ context.Context, _ *Envelope[TestEvent]) error {
+			UseEffect[TestEvent](testLogID, func(_ context.Context, _ *Envelope[TestEvent]) error {
 				effectCalled.Store(true)
 				return nil
 			}),
@@ -166,7 +190,7 @@ func TestPublisher_UseEffect_ErrorAborts(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseEffect[TestEvent]("check", func(_ context.Context, env *Envelope[TestEvent]) error {
+			UseEffect[TestEvent](testCheckID, func(_ context.Context, env *Envelope[TestEvent]) error {
 				if env.Value.Total < 0 {
 					return errors.New("invalid total")
 				}
@@ -205,7 +229,7 @@ func TestPublisher_UseTransform_PureTransform(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseTransform[TestEvent]("uppercase", func(_ context.Context, env *Envelope[TestEvent]) *Envelope[TestEvent] {
+			UseTransform[TestEvent](testUppercaseID, func(_ context.Context, env *Envelope[TestEvent]) *Envelope[TestEvent] {
 				env.Value.OrderID = "TRANSFORMED-" + env.Value.OrderID
 				return env
 			}),
@@ -254,7 +278,7 @@ func TestSubscriber_UseApply_TransformsValue(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseApply[TestEvent]("add-suffix", func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+			UseApply[TestEvent](testAddSuffixID, func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 				env.Value.OrderID += "-SUFFIX"
 				return env, nil
 			}),
@@ -304,7 +328,7 @@ func TestSubscriber_UseApply_ErrorTriggersNack(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseApply[TestEvent]("validate", func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+			UseApply[TestEvent](testValidateID, func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 				if env.Value.Total < 0 {
 					return env, errors.New("invalid total")
 				}
@@ -358,7 +382,7 @@ func TestPublisher_MiddlewareComposesWithReliability(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseApply[TestEvent]("count", func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+			UseApply[TestEvent](testCountID, func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 				applyCalls.Add(1)
 				return env, nil
 			}),
@@ -406,13 +430,13 @@ func TestPublisher_WithMiddleware_ExecutionOrder(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseEffect[TestEvent]("first", func(_ context.Context, _ *Envelope[TestEvent]) error {
+			UseEffect[TestEvent](testFirstID, func(_ context.Context, _ *Envelope[TestEvent]) error {
 				mu.Lock()
 				order = append(order, "first")
 				mu.Unlock()
 				return nil
 			}),
-			UseEffect[TestEvent]("second", func(_ context.Context, _ *Envelope[TestEvent]) error {
+			UseEffect[TestEvent](testSecondID, func(_ context.Context, _ *Envelope[TestEvent]) error {
 				mu.Lock()
 				order = append(order, "second")
 				mu.Unlock()
@@ -458,7 +482,7 @@ func TestPublisher_UseMutate_ConditionTrue(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseMutate[TestEvent]("add-prefix",
+			UseMutate[TestEvent](testMutateID,
 				func(_ context.Context, env *Envelope[TestEvent]) *Envelope[TestEvent] {
 					env.Value.OrderID = "MUTATED-" + env.Value.OrderID
 					return env
@@ -505,7 +529,7 @@ func TestPublisher_UseMutate_ConditionFalse(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseMutate[TestEvent]("add-prefix",
+			UseMutate[TestEvent](testMutateID,
 				func(_ context.Context, env *Envelope[TestEvent]) *Envelope[TestEvent] {
 					env.Value.OrderID = "MUTATED-" + env.Value.OrderID
 					return env
@@ -553,7 +577,7 @@ func TestPublisher_UseEnrich_Success(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseEnrich[TestEvent]("enrich", func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+			UseEnrich[TestEvent](testEnrichID, func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 				env.Value.OrderID = "ENRICHED-" + env.Value.OrderID
 				return env, nil
 			}),
@@ -595,7 +619,7 @@ func TestPublisher_UseEnrich_Failure(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseEnrich[TestEvent]("enrich", func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+			UseEnrich[TestEvent](testEnrichID, func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 				return env, errors.New("enrichment failed")
 			}),
 		),
@@ -636,7 +660,7 @@ func TestPublisher_WithFilter_ConditionTrue(t *testing.T) {
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
 	opts := []Option[TestEvent]{
-		WithFilter[TestEvent]("high-value", func(_ context.Context, env *Envelope[TestEvent]) bool {
+		WithFilter[TestEvent](testHighValueID, func(_ context.Context, env *Envelope[TestEvent]) bool {
 			return env.Value.Total > 50
 		}),
 	}
@@ -670,7 +694,7 @@ func TestPublisher_WithFilter_ConditionFalse(t *testing.T) {
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
 	opts := []Option[TestEvent]{
-		WithFilter[TestEvent]("high-value", func(_ context.Context, env *Envelope[TestEvent]) bool {
+		WithFilter[TestEvent](testHighValueID, func(_ context.Context, env *Envelope[TestEvent]) bool {
 			return env.Value.Total > 50
 		}),
 	}
@@ -709,7 +733,7 @@ func TestPublisher_WithMiddleware_NestedProcessors(t *testing.T) {
 	opts := []Option[TestEvent]{
 		WithMiddleware(
 			UseRetry(3,
-				UseApply[TestEvent]("flaky", func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+				UseApply[TestEvent](testFlakyID, func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 					if attempts.Add(1) < 3 {
 						return env, errors.New("transient")
 					}
@@ -759,7 +783,7 @@ func TestPublisher_Envelope_MetadataAccess(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseEffect[TestEvent]("set-headers", func(_ context.Context, env *Envelope[TestEvent]) error {
+			UseEffect[TestEvent](testSetHeadersID, func(_ context.Context, env *Envelope[TestEvent]) error {
 				env.Metadata["X-Trace-ID"] = "trace-123"
 				env.Metadata["X-Correlation-ID"] = "corr-456"
 				return nil
@@ -799,7 +823,7 @@ func TestSubscriber_Envelope_MetadataAccess(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseEffect[TestEvent]("read-headers", func(_ context.Context, env *Envelope[TestEvent]) error {
+			UseEffect[TestEvent](testReadHeadersID, func(_ context.Context, env *Envelope[TestEvent]) error {
 				receivedTraceID = env.Metadata["X-Trace-ID"]
 				wg.Done()
 				return nil
@@ -862,7 +886,7 @@ func TestPublisher_UseBackoff(t *testing.T) {
 	opts := []Option[TestEvent]{
 		WithMiddleware(
 			UseBackoff(3, 1*time.Millisecond,
-				UseApply[TestEvent]("flaky", func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+				UseApply[TestEvent](testFlakyID, func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 					if attempts.Add(1) < 3 {
 						return env, errors.New("transient")
 					}
@@ -905,15 +929,12 @@ func TestPublisher_UseTimeout(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseTimeout(50*time.Millisecond,
-				UseApply[TestEvent]("slow", func(ctx context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
-					select {
-					case <-ctx.Done():
-						timedOut.Store(true)
-						return env, ctx.Err()
-					case <-time.After(time.Second):
-						return env, nil
-					}
+			UseTimeout(5*time.Millisecond,
+				UseApply[TestEvent](testSlowID, func(ctx context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+					// Block until context is cancelled
+					<-ctx.Done()
+					timedOut.Store(true)
+					return env, ctx.Err()
 				}),
 			),
 		),
@@ -923,6 +944,9 @@ func TestPublisher_UseTimeout(t *testing.T) {
 	pub.Start()
 
 	c.Emit(context.Background(), signal, key.Field(TestEvent{OrderID: "timeout-test"}))
+
+	// Wait for timeout to complete
+	time.Sleep(20 * time.Millisecond)
 
 	c.Shutdown()
 	pub.Close()
@@ -951,11 +975,11 @@ func TestPublisher_UseFallback(t *testing.T) {
 	opts := []Option[TestEvent]{
 		WithMiddleware(
 			UseFallback(
-				UseApply[TestEvent]("primary", func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+				UseApply[TestEvent](testPrimaryID, func(_ context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 					primaryCalled.Store(true)
 					return env, errors.New("primary failed")
 				}),
-				UseEffect[TestEvent]("fallback", func(_ context.Context, _ *Envelope[TestEvent]) error {
+				UseEffect[TestEvent](testFallbackProcID, func(_ context.Context, _ *Envelope[TestEvent]) error {
 					fallbackCalled.Store(true)
 					return nil
 				}),
@@ -996,11 +1020,11 @@ func TestPublisher_UseFilter(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseFilter("high-value",
+			UseFilter(testHighValueID,
 				func(_ context.Context, env *Envelope[TestEvent]) bool {
 					return env.Value.Total > 100
 				},
-				UseEffect[TestEvent]("process", func(_ context.Context, _ *Envelope[TestEvent]) error {
+				UseEffect[TestEvent](testProcessID, func(_ context.Context, _ *Envelope[TestEvent]) error {
 					processorCalled.Store(true)
 					return nil
 				}),
@@ -1039,11 +1063,11 @@ func TestPublisher_UseFilter_ConditionTrue(t *testing.T) {
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseFilter("high-value",
+			UseFilter(testHighValueID,
 				func(_ context.Context, env *Envelope[TestEvent]) bool {
 					return env.Value.Total > 100
 				},
-				UseEffect[TestEvent]("process", func(_ context.Context, _ *Envelope[TestEvent]) error {
+				UseEffect[TestEvent](testProcessID, func(_ context.Context, _ *Envelope[TestEvent]) error {
 					processorCalled.Store(true)
 					return nil
 				}),
@@ -1065,12 +1089,11 @@ func TestPublisher_UseFilter_ConditionTrue(t *testing.T) {
 	}
 }
 
-func TestPublisher_UseRateLimit(t *testing.T) {
-	var published atomic.Int32
+func TestPublisher_UseRateLimit_Middleware(t *testing.T) {
+	var processed atomic.Int32
 
 	provider := &mockProvider{
 		publishFunc: func(_ context.Context, _ []byte, _ Metadata) error {
-			published.Add(1)
 			return nil
 		},
 	}
@@ -1078,12 +1101,17 @@ func TestPublisher_UseRateLimit(t *testing.T) {
 	c := capitan.New(capitan.WithSyncMode())
 	defer c.Shutdown()
 
-	signal := capitan.NewSignal("test.use.ratelimit", "Test UseRateLimit")
+	signal := capitan.NewSignal("test.use.ratelimit.middleware", "Test UseRateLimit middleware")
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseRateLimit[TestEvent](100, 5), // High rate to not block test
+			UseRateLimit(100, 5, // High rate to not block test
+				UseEffect[TestEvent](testProcessID, func(_ context.Context, _ *Envelope[TestEvent]) error {
+					processed.Add(1)
+					return nil
+				}),
+			),
 		),
 	}
 
@@ -1097,7 +1125,7 @@ func TestPublisher_UseRateLimit(t *testing.T) {
 	c.Shutdown()
 	pub.Close()
 
-	if published.Load() != 3 {
-		t.Errorf("expected 3 published, got %d", published.Load())
+	if processed.Load() != 3 {
+		t.Errorf("expected 3 processed, got %d", processed.Load())
 	}
 }

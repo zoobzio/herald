@@ -10,7 +10,11 @@ import (
 	"time"
 
 	"github.com/zoobzio/capitan"
+	"github.com/zoobzio/pipz"
 )
+
+// Test identity for codec tests.
+var testSetCtID = pipz.NewIdentity("test:set-ct", "Test set content type")
 
 // mockCodec tracks calls for testing.
 type mockCodec struct {
@@ -213,7 +217,7 @@ func TestPublisher_ContentTypeNotOverwritten(t *testing.T) {
 	// Middleware that pre-sets Content-Type
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseTransform[TestEvent]("set-ct", func(_ context.Context, env *Envelope[TestEvent]) *Envelope[TestEvent] {
+			UseTransform[TestEvent](testSetCtID, func(_ context.Context, env *Envelope[TestEvent]) *Envelope[TestEvent] {
 				env.Metadata["Content-Type"] = "application/x-preset"
 				return env
 			}),

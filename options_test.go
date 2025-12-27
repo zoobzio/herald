@@ -13,6 +13,13 @@ import (
 	"github.com/zoobzio/pipz"
 )
 
+// Test identities for options tests.
+var (
+	testMarkID        = pipz.NewIdentity("test:mark", "Test mark processor")
+	testCountErrorsID = pipz.NewIdentity("test:count-errors", "Test error counter")
+	testFallbackID    = pipz.NewIdentity("test:fallback", "Test fallback processor")
+)
+
 // Note: errors import used for TestPublisher_WithBackoff
 
 func TestPublisher_WithBackoff(t *testing.T) {
@@ -249,7 +256,7 @@ func TestWithPipeline_CustomPipeline(t *testing.T) {
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
 	// Custom pipeline that marks transformation
-	custom := pipz.Transform[*Envelope[TestEvent]]("mark", func(_ context.Context, env *Envelope[TestEvent]) *Envelope[TestEvent] {
+	custom := pipz.Transform(testMarkID, func(_ context.Context, env *Envelope[TestEvent]) *Envelope[TestEvent] {
 		transformed.Store(true)
 		return env
 	})
@@ -323,7 +330,7 @@ func TestPublisher_WithErrorHandler(t *testing.T) {
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
 	// Error handler that counts errors
-	errorHandler := pipz.Effect("count-errors", func(_ context.Context, _ *pipz.Error[*Envelope[TestEvent]]) error {
+	errorHandler := pipz.Effect(testCountErrorsID, func(_ context.Context, _ *pipz.Error[*Envelope[TestEvent]]) error {
 		handledErrors.Add(1)
 		return nil
 	})
@@ -363,7 +370,7 @@ func TestPublisher_WithFallback(t *testing.T) {
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
 	// Fallback processor that succeeds
-	fallback := pipz.Effect("fallback", func(_ context.Context, _ *Envelope[TestEvent]) error {
+	fallback := pipz.Effect(testFallbackID, func(_ context.Context, _ *Envelope[TestEvent]) error {
 		fallbackCalls.Add(1)
 		return nil
 	})
@@ -405,7 +412,7 @@ func TestPublisher_WithFallback_PrimarySucceeds(t *testing.T) {
 	signal := capitan.NewSignal("test.fallback.success", "Test fallback primary success")
 	key := capitan.NewKey[TestEvent]("payload", "test.event")
 
-	fallback := pipz.Effect("fallback", func(_ context.Context, _ *Envelope[TestEvent]) error {
+	fallback := pipz.Effect(testFallbackID, func(_ context.Context, _ *Envelope[TestEvent]) error {
 		fallbackCalls.Add(1)
 		return nil
 	})

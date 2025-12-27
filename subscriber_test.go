@@ -10,6 +10,13 @@ import (
 	"time"
 
 	"github.com/zoobzio/capitan"
+	"github.com/zoobzio/pipz"
+)
+
+// Test identities for subscriber tests.
+var (
+	testCaptureMetadataID = pipz.NewIdentity("test:capture-metadata", "Test capture metadata")
+	testFailID            = pipz.NewIdentity("test:fail", "Test fail processor")
 )
 
 // newTestMessage creates a Message with no-op ack/nack for testing.
@@ -507,7 +514,7 @@ func TestSubscriber_MessageWithMetadata(t *testing.T) {
 	// Middleware that captures metadata from envelope
 	opts := []Option[TestEvent]{
 		WithMiddleware(
-			UseEffect[TestEvent]("capture-metadata", func(_ context.Context, env *Envelope[TestEvent]) error {
+			UseEffect[TestEvent](testCaptureMetadataID, func(_ context.Context, env *Envelope[TestEvent]) error {
 				receivedMetadata = env.Metadata
 				wg.Done()
 				return nil
@@ -743,7 +750,7 @@ func TestSubscriber_NilNackOnPipelineError(t *testing.T) {
 	// Pipeline that always fails
 	failingPipeline := []Option[TestEvent]{
 		WithMiddleware(
-			UseApply[TestEvent]("fail", func(_ context.Context, _ *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+			UseApply[TestEvent](testFailID, func(_ context.Context, _ *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 				return nil, errors.New("pipeline failed")
 			}),
 		),
@@ -897,7 +904,7 @@ func TestSubscriber_NackOnPipelineError(t *testing.T) {
 	// Pipeline that always fails
 	failingPipeline := []Option[TestEvent]{
 		WithMiddleware(
-			UseApply[TestEvent]("fail", func(_ context.Context, _ *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+			UseApply[TestEvent](testFailID, func(_ context.Context, _ *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 				return nil, errors.New("pipeline failed")
 			}),
 		),
@@ -953,7 +960,7 @@ func TestSubscriber_NackErrorOnPipelineError(t *testing.T) {
 	// Pipeline that always fails
 	failingPipeline := []Option[TestEvent]{
 		WithMiddleware(
-			UseApply[TestEvent]("fail", func(_ context.Context, _ *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
+			UseApply[TestEvent](testFailID, func(_ context.Context, _ *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
 				return nil, errors.New("pipeline failed")
 			}),
 		),

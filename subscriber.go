@@ -8,6 +8,12 @@ import (
 	"github.com/zoobzio/pipz"
 )
 
+// Internal identities for subscriber.
+var (
+	emitID              = pipz.NewIdentity("herald:emit", "Emits to Capitan signal")
+	subscribePipelineID = pipz.NewIdentity("herald:subscriber", "Subscriber pipeline")
+)
+
 // Subscriber consumes from a broker and emits events to Capitan.
 // T is the struct type representing the message contract.
 type Subscriber[T any] struct {
@@ -16,7 +22,7 @@ type Subscriber[T any] struct {
 	key      capitan.GenericKey[T]
 	capitan  *capitan.Capitan
 	codec    Codec
-	pipeline pipz.Chainable[*Envelope[T]]
+	pipeline *pipz.Pipeline[*Envelope[T]]
 	cancel   context.CancelFunc
 	wg       sync.WaitGroup
 }
@@ -64,18 +70,18 @@ func NewSubscriber[T any](provider Provider, signal capitan.Signal, key capitan.
 	}
 
 	// Build pipeline: start with terminal, wrap with options
-	var pipeline pipz.Chainable[*Envelope[T]] = newSubscribeTerminal[T](signal, key, s)
+	chain := newSubscribeTerminal[T](signal, key, s)
 	for _, opt := range pipelineOpts {
-		pipeline = opt(pipeline)
+		chain = opt(chain)
 	}
-	s.pipeline = pipeline
+	s.pipeline = pipz.NewPipeline(subscribePipelineID, chain)
 
 	return s
 }
 
 // newSubscribeTerminal creates the terminal operation that emits to Capitan.
 func newSubscribeTerminal[T any](signal capitan.Signal, key capitan.GenericKey[T], s *Subscriber[T]) pipz.Chainable[*Envelope[T]] {
-	return pipz.Effect("emit", func(ctx context.Context, env *Envelope[T]) error {
+	return pipz.Effect(emitID, func(ctx context.Context, env *Envelope[T]) error {
 		valueField := key.Field(env.Value)
 		metaField := MetadataKey.Field(env.Metadata)
 		if s.capitan != nil {

@@ -6,6 +6,17 @@ import (
 	"github.com/zoobzio/pipz"
 )
 
+// Internal identities for reliability options.
+var (
+	retryID          = pipz.NewIdentity("herald:retry", "Retries failed operations")
+	backoffID        = pipz.NewIdentity("herald:backoff", "Retries with exponential backoff")
+	timeoutID        = pipz.NewIdentity("herald:timeout", "Enforces operation timeout")
+	circuitBreakerID = pipz.NewIdentity("herald:circuit-breaker", "Circuit breaker protection")
+	rateLimitID      = pipz.NewIdentity("herald:rate-limit", "Rate limiting")
+	errorHandlerID   = pipz.NewIdentity("herald:error-handler", "Error handling")
+	fallbackID       = pipz.NewIdentity("herald:fallback", "Fallback alternatives")
+)
+
 // Option modifies a pipeline for reliability features.
 // Options wrap the terminal operation with additional behavior.
 type Option[T any] func(pipz.Chainable[*Envelope[T]]) pipz.Chainable[*Envelope[T]]
@@ -14,7 +25,7 @@ type Option[T any] func(pipz.Chainable[*Envelope[T]]) pipz.Chainable[*Envelope[T
 // Failed operations are retried up to maxAttempts times immediately.
 func WithRetry[T any](maxAttempts int) Option[T] {
 	return func(pipeline pipz.Chainable[*Envelope[T]]) pipz.Chainable[*Envelope[T]] {
-		return pipz.NewRetry("retry", pipeline, maxAttempts)
+		return pipz.NewRetry(retryID, pipeline, maxAttempts)
 	}
 }
 
@@ -23,7 +34,7 @@ func WithRetry[T any](maxAttempts int) Option[T] {
 // The delay starts at baseDelay and doubles after each failure.
 func WithBackoff[T any](maxAttempts int, baseDelay time.Duration) Option[T] {
 	return func(pipeline pipz.Chainable[*Envelope[T]]) pipz.Chainable[*Envelope[T]] {
-		return pipz.NewBackoff("backoff", pipeline, maxAttempts, baseDelay)
+		return pipz.NewBackoff(backoffID, pipeline, maxAttempts, baseDelay)
 	}
 }
 
@@ -31,7 +42,7 @@ func WithBackoff[T any](maxAttempts int, baseDelay time.Duration) Option[T] {
 // Operations exceeding this duration will be canceled.
 func WithTimeout[T any](duration time.Duration) Option[T] {
 	return func(pipeline pipz.Chainable[*Envelope[T]]) pipz.Chainable[*Envelope[T]] {
-		return pipz.NewTimeout("timeout", pipeline, duration)
+		return pipz.NewTimeout(timeoutID, pipeline, duration)
 	}
 }
 
@@ -39,7 +50,7 @@ func WithTimeout[T any](duration time.Duration) Option[T] {
 // After 'failures' consecutive failures, the circuit opens for 'recovery' duration.
 func WithCircuitBreaker[T any](failures int, recovery time.Duration) Option[T] {
 	return func(pipeline pipz.Chainable[*Envelope[T]]) pipz.Chainable[*Envelope[T]] {
-		return pipz.NewCircuitBreaker("circuit-breaker", pipeline, failures, recovery)
+		return pipz.NewCircuitBreaker(circuitBreakerID, pipeline, failures, recovery)
 	}
 }
 
@@ -47,8 +58,7 @@ func WithCircuitBreaker[T any](failures int, recovery time.Duration) Option[T] {
 // rate = operations per second, burst = burst capacity.
 func WithRateLimit[T any](rate float64, burst int) Option[T] {
 	return func(pipeline pipz.Chainable[*Envelope[T]]) pipz.Chainable[*Envelope[T]] {
-		rateLimiter := pipz.NewRateLimiter[*Envelope[T]]("rate-limit", rate, burst)
-		return pipz.NewSequence("rate-limited", rateLimiter, pipeline)
+		return pipz.NewRateLimiter(rateLimitID, rate, burst, pipeline)
 	}
 }
 
@@ -56,7 +66,7 @@ func WithRateLimit[T any](rate float64, burst int) Option[T] {
 // The error handler receives error context and can process/log/alert as needed.
 func WithErrorHandler[T any](handler pipz.Chainable[*pipz.Error[*Envelope[T]]]) Option[T] {
 	return func(pipeline pipz.Chainable[*Envelope[T]]) pipz.Chainable[*Envelope[T]] {
-		return pipz.NewHandle("error-handler", pipeline, handler)
+		return pipz.NewHandle(errorHandlerID, pipeline, handler)
 	}
 }
 
@@ -66,7 +76,7 @@ func WithErrorHandler[T any](handler pipz.Chainable[*pipz.Error[*Envelope[T]]]) 
 func WithFallback[T any](fallbacks ...pipz.Chainable[*Envelope[T]]) Option[T] {
 	return func(pipeline pipz.Chainable[*Envelope[T]]) pipz.Chainable[*Envelope[T]] {
 		all := append([]pipz.Chainable[*Envelope[T]]{pipeline}, fallbacks...)
-		return pipz.NewFallback("fallback", all...)
+		return pipz.NewFallback(fallbackID, all...)
 	}
 }
 

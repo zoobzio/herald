@@ -8,6 +8,12 @@ import (
 	"github.com/zoobzio/pipz"
 )
 
+// Internal identities for publisher.
+var (
+	publishID         = pipz.NewIdentity("herald:publish", "Publishes to broker")
+	publishPipelineID = pipz.NewIdentity("herald:publisher", "Publisher pipeline")
+)
+
 // Publisher observes a Capitan signal and publishes events to a broker.
 // T is the struct type representing the message contract.
 type Publisher[T any] struct {
@@ -16,7 +22,7 @@ type Publisher[T any] struct {
 	key      capitan.GenericKey[T]
 	capitan  *capitan.Capitan
 	codec    Codec
-	pipeline pipz.Chainable[*Envelope[T]]
+	pipeline *pipz.Pipeline[*Envelope[T]]
 	observer *capitan.Observer
 	inflight sync.WaitGroup
 }
@@ -64,18 +70,18 @@ func NewPublisher[T any](provider Provider, signal capitan.Signal, key capitan.G
 	}
 
 	// Build pipeline: start with terminal, wrap with options
-	var pipeline pipz.Chainable[*Envelope[T]] = newPublishTerminal[T](provider, p.codec)
+	chain := newPublishTerminal[T](provider, p.codec)
 	for _, opt := range pipelineOpts {
-		pipeline = opt(pipeline)
+		chain = opt(chain)
 	}
-	p.pipeline = pipeline
+	p.pipeline = pipz.NewPipeline(publishPipelineID, chain)
 
 	return p
 }
 
 // newPublishTerminal creates the terminal operation that marshals and publishes to the broker.
 func newPublishTerminal[T any](provider Provider, codec Codec) pipz.Chainable[*Envelope[T]] {
-	return pipz.Apply("publish", func(ctx context.Context, env *Envelope[T]) (*Envelope[T], error) {
+	return pipz.Apply(publishID, func(ctx context.Context, env *Envelope[T]) (*Envelope[T], error) {
 		data, err := codec.Marshal(env.Value)
 		if err != nil {
 			return env, err
