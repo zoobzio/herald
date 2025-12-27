@@ -57,118 +57,118 @@ linters:
     - predeclared  # Shadowing predeclared identifiers
     - copyloopvar  # Loop variable capture
 
+  settings:
+    gosec:
+      severity: medium
+      confidence: medium
+      excludes:
+        - G104  # We'll use errcheck instead
+      config:
+        global:
+          audit: true
+
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment  # Performance optimization, not critical for correctness
+
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+
+    gocritic:
+      enabled-checks:
+        - commentedOutCode
+        - deferInLoop
+        - emptyFallthrough
+        - emptyStringTest
+        - equalFold
+        - evalOrder
+        - exposedSyncMutex
+        - externalErrorReassign
+        - filepathJoin
+        - hexLiteral
+        - httpNoBody
+        - importShadow
+        - indexAlloc
+        - initClause
+        - nestingReduce
+        - nilValReturn
+        - octalLiteral
+        - preferFilepathJoin
+        - preferFprint
+        - preferStringWriter
+        - preferWriteByte
+        - rangeExprCopy
+        - rangeValCopy
+        - redundantSprint
+        - regexpPattern
+        - regexpSimplify
+        - ruleguard
+        - sloppyReassign
+        - sortSlice
+        - sprintfQuotedString
+        - sqlQuery
+        - stringConcatSimplify
+        - stringXbytes
+        - syncMapLoadAndDelete
+        - truncateCmp
+        - typeAssertChain
+        - typeDefFirst
+        - typeUnparen
+        - unlabelStmt
+        - unnamedResult
+        - unnecessaryBlock
+        - unnecessaryDefer
+        - weakCond
+        - yodaStyleExpr
+
+    revive:
+      severity: warning
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+        - name: if-return
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: modifies-parameter
+        - name: modifies-value-receiver
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: string-of-int
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: unnecessary-stmt
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: unused-receiver
+        - name: useless-break
+        - name: var-declaration
+        - name: var-naming
+
+    dupl:
+      threshold: 150
+
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+
+    misspell:
+      locale: US
+
 formatters:
   enable:
     - gofmt
     - goimports
-
-linters-settings:
-  gosec:
-    severity: medium
-    confidence: medium
-    excludes:
-      - G104  # We'll use errcheck instead
-    config:
-      global:
-        audit: true
-
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment  # Performance optimization, not critical for correctness
-
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-
-  gocritic:
-    enabled-checks:
-      - commentedOutCode
-      - deferInLoop
-      - emptyFallthrough
-      - emptyStringTest
-      - equalFold
-      - evalOrder
-      - exposedSyncMutex
-      - externalErrorReassign
-      - filepathJoin
-      - hexLiteral
-      - httpNoBody
-      - importShadow
-      - indexAlloc
-      - initClause
-      - nestingReduce
-      - nilValReturn
-      - octalLiteral
-      - preferFilepathJoin
-      - preferFprint
-      - preferStringWriter
-      - preferWriteByte
-      - rangeExprCopy
-      - rangeValCopy
-      - redundantSprint
-      - regexpPattern
-      - regexpSimplify
-      - ruleguard
-      - sloppyReassign
-      - sortSlice
-      - sprintfQuotedString
-      - sqlQuery
-      - stringConcatSimplify
-      - stringXbytes
-      - syncMapLoadAndDelete
-      - truncateCmp
-      - typeAssertChain
-      - typeDefFirst
-      - typeUnparen
-      - unlabelStmt
-      - unnamedResult
-      - unnecessaryBlock
-      - unnecessaryDefer
-      - weakCond
-      - yodaStyleExpr
-
-  revive:
-    severity: warning
-    rules:
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: empty-block
-      - name: error-naming
-      - name: error-return
-      - name: error-strings
-      - name: errorf
-      - name: exported
-      - name: if-return
-      - name: increment-decrement
-      - name: indent-error-flow
-      - name: modifies-parameter
-      - name: modifies-value-receiver
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: redefines-builtin-id
-      - name: string-of-int
-      - name: superfluous-else
-      - name: time-naming
-      - name: unexported-return
-      - name: unnecessary-stmt
-      - name: unreachable-code
-      - name: unused-parameter
-      - name: unused-receiver
-      - name: useless-break
-      - name: var-declaration
-      - name: var-naming
-
-  dupl:
-    threshold: 150
-
-  goconst:
-    min-len: 3
-    min-occurrences: 3
-
-  misspell:
-    locale: US
 

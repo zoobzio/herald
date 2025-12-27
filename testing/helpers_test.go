@@ -252,13 +252,13 @@ func TestErrorCapture(t *testing.T) {
 		t.Errorf("expected 2 errors, got %d", capture.Count())
 	}
 
-	errors := capture.Errors()
-	if len(errors) != 2 {
-		t.Fatalf("expected 2 errors, got %d", len(errors))
+	errs := capture.Errors()
+	if len(errs) != 2 {
+		t.Fatalf("expected 2 errors, got %d", len(errs))
 	}
 
-	if errors[0].Operation != "publish" {
-		t.Errorf("unexpected first error: %s", errors[0].Operation)
+	if errs[0].Operation != "publish" {
+		t.Errorf("unexpected first error: %s", errs[0].Operation)
 	}
 
 	capture.Reset()

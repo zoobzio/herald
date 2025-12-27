@@ -931,7 +931,7 @@ func TestPublisher_UseTimeout(t *testing.T) {
 		WithMiddleware(
 			UseTimeout(5*time.Millisecond,
 				UseApply[TestEvent](testSlowID, func(ctx context.Context, env *Envelope[TestEvent]) (*Envelope[TestEvent], error) {
-					// Block until context is cancelled
+					// Block until context is canceled
 					<-ctx.Done()
 					timedOut.Store(true)
 					return env, ctx.Err()
