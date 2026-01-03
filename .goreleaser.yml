@@ -69,8 +69,8 @@ changelog:
     exclude:
       - "^Merge"
       - "^merge"
-      - "^wip"
-      - "^WIP"
+      - "^docs:"
+      - "^test:"
 
 release:
   github:
