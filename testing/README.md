@@ -21,7 +21,7 @@ testing/
 - **Purpose**: Test individual components in isolation
 - **Scope**: Publisher, Subscriber, Codec, Options, Result
 
-### Provider Tests (`pkg/*/`)
+### Provider Tests (Provider Directories)
 - **Location**: Within each provider package
 - **Purpose**: Test provider implementations with real brokers
 - **Technology**: testcontainers for database/broker setup
@@ -62,9 +62,9 @@ go test -v .
 ### Provider Tests
 ```bash
 # Run provider tests (requires Docker for testcontainers)
-cd pkg/kafka && go test -v ./...
-cd pkg/redis && go test -v ./...
-cd pkg/sql && go test -v ./...
+cd kafka && go test -v ./...
+cd redis && go test -v ./...
+cd sql && go test -v ./...
 ```
 
 ### Integration Tests Only

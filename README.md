@@ -35,18 +35,19 @@ go get github.com/zoobzio/herald
 
 Requires Go 1.23+.
 
-## Publishing
+## Quick Start
 
 ```go
 package main
 
 import (
     "context"
+    "fmt"
 
     kafkago "github.com/segmentio/kafka-go"
     "github.com/zoobzio/capitan"
     "github.com/zoobzio/herald"
-    "github.com/zoobzio/herald/pkg/kafka"
+    "github.com/zoobzio/herald/kafka"
 )
 
 type Order struct {
@@ -57,55 +58,55 @@ type Order struct {
 func main() {
     ctx := context.Background()
 
+    // Define signal and typed key
     orderCreated := capitan.NewSignal("order.created", "New order")
     orderKey := capitan.NewKey[Order]("order", "app.Order")
 
-    writer := &kafkago.Writer{
-        Addr:  kafkago.TCP("localhost:9092"),
-        Topic: "orders",
-    }
-    provider := kafka.New("orders", kafka.WithWriter(writer))
+    // Create Kafka provider
+    writer := &kafkago.Writer{Addr: kafkago.TCP("localhost:9092"), Topic: "orders"}
+    reader := kafkago.NewReader(kafkago.ReaderConfig{
+        Brokers: []string{"localhost:9092"},
+        Topic:   "orders",
+        GroupID: "order-processor",
+    })
+    provider := kafka.New("orders", kafka.WithWriter(writer), kafka.WithReader(reader))
     defer provider.Close()
 
+    // Publish: capitan events → Kafka
     pub := herald.NewPublisher(provider, orderCreated, orderKey, nil)
     pub.Start()
     defer pub.Close()
 
-    // Events automatically published to Kafka
-    capitan.Emit(ctx, orderCreated, orderKey.Field(Order{
-        ID:    "ORD-123",
-        Total: 99.99,
-    }))
+    // Subscribe: Kafka → capitan events
+    sub := herald.NewSubscriber(provider, orderCreated, orderKey, nil)
+    sub.Start(ctx)
+    defer sub.Close()
+
+    // Handle incoming messages with standard capitan hooks
+    capitan.Hook(orderCreated, func(ctx context.Context, e *capitan.Event) {
+        order, _ := orderKey.From(e)
+        fmt.Printf("Received order: %s\n", order.ID)
+    })
+
+    // Emit an event — automatically published to Kafka
+    capitan.Emit(ctx, orderCreated, orderKey.Field(Order{ID: "ORD-123", Total: 99.99}))
 
     capitan.Shutdown()
 }
 ```
 
-## Subscribing
+## Capabilities
 
-```go
-// Create provider with reader
-reader := kafkago.NewReader(kafkago.ReaderConfig{
-    Brokers: []string{"localhost:9092"},
-    Topic:   "orders",
-    GroupID: "order-processor",
-})
-provider := kafka.New("orders", kafka.WithReader(reader))
-defer provider.Close()
-
-// Subscribe: broker messages become capitan events
-sub := herald.NewSubscriber(provider, orderCreated, orderKey, nil)
-sub.Start(ctx)
-defer sub.Close()
-
-// Handle with standard capitan hooks
-capitan.Hook(orderCreated, func(ctx context.Context, e *capitan.Event) {
-    order, _ := orderKey.From(e)
-    fmt.Printf("Received order: %s\n", order.ID)
-})
-```
-
-Messages are automatically deserialized, emitted as capitan events, and acknowledged on success.
+| Feature | Description | Docs |
+|---------|-------------|------|
+| Bidirectional Flow | Publish capitan events to brokers or subscribe broker messages as events | [Publishing](docs/2.learn/1.publishing.md), [Subscribing](docs/2.learn/2.subscribing.md) |
+| Type-Safe Generics | Compile-time checked publishers and subscribers | [Overview](docs/1.overview.md) |
+| 11 Providers | Kafka, NATS, JetStream, Pub/Sub, Redis, SQS, AMQP, SNS, Bolt, Firestore, io | [Providers](docs/2.learn/3.providers.md) |
+| Pipeline Middleware | Validation, transformation, and side effects via processors | [Reliability](docs/3.guides/1.reliability.md) |
+| Reliability Patterns | Retry, backoff, timeout, circuit breaker, rate limiting via [pipz](https://github.com/zoobzio/pipz) | [Reliability](docs/3.guides/1.reliability.md) |
+| Auto Acknowledgment | Messages acked/nacked based on processing outcome | [Subscribing](docs/2.learn/2.subscribing.md) |
+| Custom Codecs | Pluggable serialization (JSON default, custom supported) | [Codecs](docs/3.guides/2.codecs.md) |
+| Error Observability | All errors emit as [capitan](https://github.com/zoobzio/capitan) events | [Error Handling](docs/3.guides/3.errors.md) |
 
 ## Why herald?
 
@@ -115,21 +116,37 @@ Messages are automatically deserialized, emitted as capitan events, and acknowle
 - **Reliable** — Pipeline middleware for retry, backoff, timeout, circuit breaker, rate limiting
 - **Observable** — Errors flow through [capitan](https://github.com/zoobzio/capitan)
 
+## Unified Event Flow
+
+Herald enables a pattern: **internal events become external messages, external messages become internal events**.
+
+Your application emits [capitan](https://github.com/zoobzio/capitan) events as usual. Herald publishes them to any broker. Other services publish to brokers. Herald subscribes and emits them as capitan events. Same signals, same keys, same hooks — the boundary between internal and external disappears.
+
+```go
+// Service A: emit locally, publish externally
+capitan.Emit(ctx, orderCreated, orderKey.Field(order))
+
+// Service B: subscribe externally, handle locally
+capitan.Hook(orderCreated, processOrder)
+```
+
+Two services, one event type, zero coupling. The broker is just a transport.
+
 ## Providers
 
 | Provider | Package | Use Case |
 |----------|---------|----------|
-| Kafka | [`pkg/kafka`](pkg/kafka) | High-throughput streaming |
-| NATS | [`pkg/nats`](pkg/nats) | Lightweight cloud messaging |
-| JetStream | [`pkg/jetstream`](pkg/jetstream) | NATS with persistence and headers |
-| Google Pub/Sub | [`pkg/pubsub`](pkg/pubsub) | GCP managed messaging |
-| Redis Streams | [`pkg/redis`](pkg/redis) | In-memory with persistence |
-| AWS SQS | [`pkg/sqs`](pkg/sqs) | AWS managed queues |
-| RabbitMQ/AMQP | [`pkg/amqp`](pkg/amqp) | Traditional message broker |
-| AWS SNS | [`pkg/sns`](pkg/sns) | Pub/sub fanout |
-| BoltDB | [`pkg/bolt`](pkg/bolt) | Embedded local queues |
-| Firestore | [`pkg/firestore`](pkg/firestore) | Firebase/GCP document store |
-| io | [`pkg/io`](pkg/io) | Testing with io.Reader/Writer |
+| Kafka | [`kafka`](kafka) | High-throughput streaming |
+| NATS | [`nats`](nats) | Lightweight cloud messaging |
+| JetStream | [`jetstream`](jetstream) | NATS with persistence and headers |
+| Google Pub/Sub | [`pubsub`](pubsub) | GCP managed messaging |
+| Redis Streams | [`redis`](redis) | In-memory with persistence |
+| AWS SQS | [`sqs`](sqs) | AWS managed queues |
+| RabbitMQ/AMQP | [`amqp`](amqp) | Traditional message broker |
+| AWS SNS | [`sns`](sns) | Pub/sub fanout |
+| BoltDB | [`bolt`](bolt) | Embedded local queues |
+| Firestore | [`firestore`](firestore) | Firebase/GCP document store |
+| io | [`io`](io) | Testing with io.Reader/Writer |
 
 ## Processing Hooks
 
@@ -221,10 +238,7 @@ Full documentation is available in the [docs/](docs/) directory:
 
 ## Contributing
 
-Contributions welcome! Please ensure:
-- Tests pass: `go test ./...`
-- Code is formatted: `go fmt ./...`
-- No lint errors: `golangci-lint run`
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
