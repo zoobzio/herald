@@ -13,7 +13,7 @@ Bidirectional bindings between [capitan](https://github.com/zoobzio/capitan) eve
 
 Emit a [capitan](https://github.com/zoobzio/capitan) event, herald publishes it. Herald receives a message, capitan emits it. Same types, same signals, automatic serialization.
 
-## Two Directions
+## Bidirectional Event Distribution
 
 ```go
 // capitan → broker: Publish events to external systems
@@ -97,16 +97,16 @@ func main() {
 
 ## Capabilities
 
-| Feature | Description | Docs |
-|---------|-------------|------|
-| Bidirectional Flow | Publish capitan events to brokers or subscribe broker messages as events | [Publishing](docs/2.learn/1.publishing.md), [Subscribing](docs/2.learn/2.subscribing.md) |
-| Type-Safe Generics | Compile-time checked publishers and subscribers | [Overview](docs/1.overview.md) |
-| 11 Providers | Kafka, NATS, JetStream, Pub/Sub, Redis, SQS, AMQP, SNS, Bolt, Firestore, io | [Providers](docs/2.learn/3.providers.md) |
-| Pipeline Middleware | Validation, transformation, and side effects via processors | [Reliability](docs/3.guides/1.reliability.md) |
-| Reliability Patterns | Retry, backoff, timeout, circuit breaker, rate limiting via [pipz](https://github.com/zoobzio/pipz) | [Reliability](docs/3.guides/1.reliability.md) |
-| Auto Acknowledgment | Messages acked/nacked based on processing outcome | [Subscribing](docs/2.learn/2.subscribing.md) |
-| Custom Codecs | Pluggable serialization (JSON default, custom supported) | [Codecs](docs/3.guides/2.codecs.md) |
-| Error Observability | All errors emit as [capitan](https://github.com/zoobzio/capitan) events | [Error Handling](docs/3.guides/3.errors.md) |
+| Feature              | Description                                                                                         | Docs                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Bidirectional Flow   | Publish capitan events to brokers or subscribe broker messages as events                            | [Publishing](docs/2.learn/1.publishing.md), [Subscribing](docs/2.learn/2.subscribing.md) |
+| Type-Safe Generics   | Compile-time checked publishers and subscribers                                                     | [Overview](docs/1.overview.md)                                                           |
+| 11 Providers         | Kafka, NATS, JetStream, Pub/Sub, Redis, SQS, AMQP, SNS, Bolt, Firestore, io                         | [Providers](docs/2.learn/3.providers.md)                                                 |
+| Pipeline Middleware  | Validation, transformation, and side effects via processors                                         | [Reliability](docs/3.guides/1.reliability.md)                                            |
+| Reliability Patterns | Retry, backoff, timeout, circuit breaker, rate limiting via [pipz](https://github.com/zoobzio/pipz) | [Reliability](docs/3.guides/1.reliability.md)                                            |
+| Auto Acknowledgment  | Messages acked/nacked based on processing outcome                                                   | [Subscribing](docs/2.learn/2.subscribing.md)                                             |
+| Custom Codecs        | Pluggable serialization (JSON default, custom supported)                                            | [Codecs](docs/3.guides/2.codecs.md)                                                      |
+| Error Observability  | All errors emit as [capitan](https://github.com/zoobzio/capitan) events                             | [Error Handling](docs/3.guides/3.errors.md)                                              |
 
 ## Why herald?
 
@@ -134,19 +134,19 @@ Two services, one event type, zero coupling. The broker is just a transport.
 
 ## Providers
 
-| Provider | Package | Use Case |
-|----------|---------|----------|
-| Kafka | [`kafka`](kafka) | High-throughput streaming |
-| NATS | [`nats`](nats) | Lightweight cloud messaging |
-| JetStream | [`jetstream`](jetstream) | NATS with persistence and headers |
-| Google Pub/Sub | [`pubsub`](pubsub) | GCP managed messaging |
-| Redis Streams | [`redis`](redis) | In-memory with persistence |
-| AWS SQS | [`sqs`](sqs) | AWS managed queues |
-| RabbitMQ/AMQP | [`amqp`](amqp) | Traditional message broker |
-| AWS SNS | [`sns`](sns) | Pub/sub fanout |
-| BoltDB | [`bolt`](bolt) | Embedded local queues |
-| Firestore | [`firestore`](firestore) | Firebase/GCP document store |
-| io | [`io`](io) | Testing with io.Reader/Writer |
+| Provider       | Package                  | Use Case                          |
+| -------------- | ------------------------ | --------------------------------- |
+| Kafka          | [`kafka`](kafka)         | High-throughput streaming         |
+| NATS           | [`nats`](nats)           | Lightweight cloud messaging       |
+| JetStream      | [`jetstream`](jetstream) | NATS with persistence and headers |
+| Google Pub/Sub | [`pubsub`](pubsub)       | GCP managed messaging             |
+| Redis Streams  | [`redis`](redis)         | In-memory with persistence        |
+| AWS SQS        | [`sqs`](sqs)             | AWS managed queues                |
+| RabbitMQ/AMQP  | [`amqp`](amqp)           | Traditional message broker        |
+| AWS SNS        | [`sns`](sns)             | Pub/sub fanout                    |
+| BoltDB         | [`bolt`](bolt)           | Embedded local queues             |
+| Firestore      | [`firestore`](firestore) | Firebase/GCP document store       |
+| io             | [`io`](io)               | Testing with io.Reader/Writer     |
 
 ## Processing Hooks
 
@@ -197,11 +197,11 @@ See [Reliability Guide](docs/3.guides/1.reliability.md) for middleware and pipel
 
 Herald handles message acknowledgment automatically:
 
-| Outcome | Action |
-|---------|--------|
-| Message processed successfully | `Ack()` — Message acknowledged |
-| Deserialization fails | `Nack()` — Message returned for redelivery |
-| Provider doesn't support ack | No-op (e.g., NATS core, SNS) |
+| Outcome                        | Action                                     |
+| ------------------------------ | ------------------------------------------ |
+| Message processed successfully | `Ack()` — Message acknowledged             |
+| Deserialization fails          | `Nack()` — Message returned for redelivery |
+| Provider doesn't support ack   | No-op (e.g., NATS core, SNS)               |
 
 ## Error Handling
 
@@ -221,18 +221,21 @@ See [Error Handling Guide](docs/3.guides/3.errors.md) for details.
 Full documentation is available in the [docs/](docs/) directory:
 
 ### Learn
+
 - [Overview](docs/1.overview.md) — Architecture and philosophy
 - [Publishing](docs/2.learn/1.publishing.md) — Forward capitan events to brokers
 - [Subscribing](docs/2.learn/2.subscribing.md) — Consume broker messages as capitan events
 - [Providers](docs/2.learn/3.providers.md) — Available broker implementations
 
 ### Guides
+
 - [Reliability](docs/3.guides/1.reliability.md) — Retry, backoff, circuit breaker, rate limiting
 - [Codecs](docs/3.guides/2.codecs.md) — Custom serialization formats
 - [Error Handling](docs/3.guides/3.errors.md) — Centralized error management
 - [Testing](docs/3.guides/4.testing.md) — Testing herald-based applications
 
 ### Reference
+
 - [API Reference](docs/4.reference/1.api.md) — Complete function and type documentation
 - [Providers Reference](docs/4.reference/2.providers.md) — Provider configuration details
 
